@@ -15,10 +15,8 @@ CHANGE LOG - Fixed expiry time added
 import socket
 import hashlib
 import cgi
-import threading
 import time
 import json
-import threading
 import pika
 import datetime as dt
 import ast
@@ -39,14 +37,14 @@ from Technical import *
 
 #########################################################################################################################
 
-model = joblib.load('EURGBP1_201213.pkl')
+model = joblib.load('model.pkl')
 clients = []
 
 #########################################################################################################################
 
 # MODEL FEATURES
 
-def calcFeaturesLocally(df, asset = 'frxEURUSD'):
+def calcFeaturesLocally(df, asset = 'frxEURGBP'):
 
 	df = copy.deepcopy(df)
 	df = np.round(df, decimals = 8)
@@ -96,10 +94,10 @@ def tradeActions(asset, px, dt_last_bar, passthrough):
 
 	if asset == 'frxEURGBP':
 
-		if (px > 0.6):
+		if (px > 0.65):
 			proposal['contract_type'] = "CALL"
 			return proposal
-		elif (px < 0.4):
+		elif (px < 0.35):
 			proposal['contract_type'] = "PUT"
 			return proposal
 		else:
@@ -171,7 +169,7 @@ def timeCheck2(dt_now, dt_proposal, max_delay = 20):
 		logging.info('Time check (2) failed')
 		return False
 
-def payoutCheck(ask_price, payout_price, min_payout = 0.2):
+def payoutCheck(ask_price, payout_price, min_payout = 0.65):
 
 	# ask_price - contract stake / trade amount
 	# payout_price - return value of contract : ask_price + profit
@@ -314,7 +312,7 @@ def on_message(ws, message):
 			# FEATURE CALCULATION
 
 			df_features = calcFeaturesLocally(df_bars, asset = asset)
-			#df_features.to_csv('test150.csv')
+			df_features.to_csv('test150.csv')
 
 			ls_exlude = ['OPEN','HIGH','LOW','CLOSE','VOLUME']
 			cols = [col for col in df_features.columns if col not in ls_exlude]
