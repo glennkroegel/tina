@@ -32,8 +32,8 @@ from sklearn.externals import joblib
 
 # CUSTOM IMPORTS
 
-from Functions import *
-from Technical import *
+#from Functions import *
+from calculations import *
 
 #########################################################################################################################
 
