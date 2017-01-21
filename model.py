@@ -9,7 +9,7 @@ from calculations import *
 
 from sklearn import linear_model, cross_validation
 from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, GradientBoostingClassifier
-
+from sklearn.metrics import accuracy_score
 
 class Model(object):
 	"""docstring for ClassName"""
@@ -136,8 +136,11 @@ class Model(object):
 	def evaluate(self):
 		# evaluate model
 		assert self.model is not None
+		y_predict = self.model.predict(self.X_test)
 		px = self.model.predict_proba(self.X_test)
+
 		score = self.model.score(self.X_test, self.Y_test)
+		score = accuracy_score(self.Y_test, y_predict)
 		return score
 
 	def export(self):
