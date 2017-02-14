@@ -37,12 +37,8 @@ class Model(object):
 		x['WILLR_D1'] = x['WILLR'].pct_change()
 		x['WILLR_D2'] = x['WILLR'].pct_change(2)
 		x['WILLR_D5'] = x['WILLR'].pct_change(5)
-		#x = x.drop('WILLR',1)
 
 		x['RSI'] = taCalcIndicator(x, 'RSI', window = 30)
-		'''x['RSI_D1'] = x['RSI'].diff()
-		x['RSI_D2'] = x['RSI'].diff(2)
-		x = x.drop('RSI',1)'''
 
 		#x['STOCH'] = taCalcIndicator(x, 'CCI', window = 30)
 

@@ -52,12 +52,11 @@ def calcFeaturesLocally(df, asset = 'frxEURGBP'):
 	df = np.round(df, decimals = 8)
 
 	if asset == 'frxEURGBP':
-		df['RSI'] = taCalcIndicator(df, 'RSI', window = 30)
 		df['WILLR'] = taCalcIndicator(df, 'WILLR', window = 30)
-		df['WILLR_M1'] = df['WILLR'].pct_change()
-		df['WILLR_M2'] = df['WILLR'].pct_change(2)
-		df['WILLR_M5'] = df['WILLR'].pct_change(5)
-		df['WILLR_M10'] = df['WILLR'].pct_change(10)
+		df['WILLR_D1'] = df['WILLR'].pct_change()
+		df['WILLR_D2'] = df['WILLR'].pct_change(2)
+		df['WILLR_D5'] = df['WILLR'].pct_change(5)
+		df['RSI'] = taCalcIndicator(df, 'RSI', window = 30)
 		return df
 	else:
 		logging.info('No features defined for asset')
