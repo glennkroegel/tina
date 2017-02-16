@@ -27,9 +27,10 @@ import xlrd
 import xlwt
 import urllib
 import copy
-#from ggplot import *
+import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score
-#from Functions import loadBinaryClassification
+
+plt.style.use('ggplot')
 
 #################################################################################################################
 
@@ -179,6 +180,8 @@ def main():
   print 'Location: {0}'.format(max_loc)
 
   # Plot Simulations
+  df_account_balance.plot()
+  plt.show()
   '''s_x = df_account_balance.index.values
   df_account_balance['x_val'] = s_x
   p1 = ggplot(aes(x = 'x_val', y = 'Balance'), data = df_account_balance) + geom_line()
@@ -193,10 +196,10 @@ def main():
   print p2'''
 
   # Export
-  df_account_balance['DATETIME'] = df_account_balance['x_val']
+  '''df_account_balance['DATETIME'] = df_account_balance['x_val']
   df_account_balance.index = df_account_balance['DATETIME']
   del df_account_balance['x_val']
-  del df_account_balance['DATETIME']
+  del df_account_balance['DATETIME']'''
   df_account_balance.to_csv("Balance.csv")
 
 if __name__ == "__main__":

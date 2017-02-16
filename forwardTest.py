@@ -16,7 +16,7 @@ options = {'time_period': 5,
 						 	'hour_start': 21,
 						 	'hour_end': 23}
 
-test = Model('EURGBP1_201415.csv', options)
+test = Model('EURGBP1_201617.csv', options)
 test.model = joblib.load('model.pkl')
 
 # Forward test function

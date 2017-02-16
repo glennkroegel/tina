@@ -95,10 +95,10 @@ def tradeActions(asset, px, dt_last_bar, passthrough):
 
 	if asset == 'frxEURGBP':
 
-		if (px > 0.65):
+		if (px > 0.67):
 			proposal['contract_type'] = "CALL"
 			return proposal
-		elif (px < 0.35):
+		elif (px < 0.33):
 			proposal['contract_type'] = "PUT"
 			return proposal
 		else:
@@ -113,7 +113,7 @@ def marketConditions(data, asset):
 	if asset == 'frxEURGBP':
 
 		c1 = True #data['NEWMINMAX'].ix[-1:].values == 4
-		c2 = (time.gmtime().tm_hour >= 21) & (time.gmtime().tm_hour < 23)
+		c2 = (time.gmtime().tm_hour >= 21) & (time.gmtime().tm_hour < 23) # CHECK CHECK CHECK
 
 		if (c1 == True) & (c2 == True):
 			return True
@@ -294,7 +294,7 @@ def on_message(ws, message):
 		try:
 			start_balance = float(res['authorize']['balance'])
 			current_balance = start_balance
-			trade_proportion = 0.00001
+			trade_proportion = 0.05
 			trade_x = getAmount(current_balance, trade_proportion)
 
 			print("Session authorized")
@@ -313,7 +313,7 @@ def on_message(ws, message):
 			# FEATURE CALCULATION
 
 			df_features = calcFeaturesLocally(df_bars, asset = asset)
-			df_features.to_csv('test150.csv')
+			df_features.to_csv('vector1.csv')
 
 			ls_exlude = ['OPEN','HIGH','LOW','CLOSE','VOLUME']
 			cols = [col for col in df_features.columns if col not in ls_exlude]
@@ -452,7 +452,7 @@ def main():
 	print('Starting websocket..')
 
 	websocket.enableTrace(False)
-	apiURL = "wss://ws.binaryws.com/websockets/v3"
+	apiURL = "wss://ws.binaryws.com/websockets/v3?app_id=2802" # hard coded app_id
 	ws = websocket.WebSocketApp(apiURL, on_message = on_message, on_error = on_error, on_close = on_close)
 	ws.on_open = on_open
 	ws.run_forever(sslopt={"ssl_version": ssl.PROTOCOL_TLSv1_1})

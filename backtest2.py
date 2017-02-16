@@ -27,8 +27,10 @@ import xlrd
 import xlwt
 import urllib
 import copy
-from ggplot import *
+import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score
+
+plt.style.use('ggplot')
 
 #################################################################################################################
 
@@ -85,8 +87,8 @@ def main():
   df_px.index = df_y.index'''
   df_px.to_csv('PX.csv', index_label = 'DATETIME')
 
-  threshold_up = 0.65
-  threshold_down = 0.35
+  threshold_up = 0.67
+  threshold_down = 0.33
 
   for i in range(1, len(df_data['Probability'])):
 
@@ -126,7 +128,7 @@ def main():
 
   print '\nSIMULATION SUMMARY:\n'
 
-  start_balance = 50
+  start_balance = 500
   trade_amount = 200
   win_proportion = 0.7
   trade_fraction = 0.05
@@ -197,7 +199,9 @@ def main():
   print 'Location: {0}'.format(max_loc)
 
   # Plot Simulations
-  s_x = df_account_balance.index.values
+  df_account_balance.plot()
+  plt.show()
+  '''s_x = df_account_balance.index.values
   df_account_balance['x_val'] = s_x
   p1 = ggplot(aes(x = 'x_val', y = 'Balance'), data = df_account_balance) + geom_line()
   p1 = p1 + xlab('Time') + ylab('Balance ($)') + ggtitle('')
@@ -208,7 +212,7 @@ def main():
   df_account_balance['x_val'] = s_x
   p2 = ggplot(aes(x = 'x_val', y = 'Balance'), data = df_account_balance) + geom_line() + scale_x_date()
   p2 = p2 + xlab('Time') + ylab('Balance ($)') + ggtitle('')
-  print p2
+  print p2'''
 
   # Export
   df_account_balance.to_csv("Balance.csv")
