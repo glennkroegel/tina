@@ -66,7 +66,7 @@ def calcFeaturesLocally(df, asset = 'frxEURGBP'):
 
 # TRADE ACTIONS
 
-def tradeActions(asset, px, dt_last_bar, passthrough):
+def tradeActions(asset, px, amount, dt_last_bar, passthrough):
 
 	px = float(px)
 	dt_last_bar = str(dt_last_bar)
@@ -84,7 +84,7 @@ def tradeActions(asset, px, dt_last_bar, passthrough):
 
 	proposal = 	{
 			        "proposal": 1,
-			        "amount": "10",
+			        "amount": amount,
 			        "basis": "stake",
 			        "contract_type": "CALL",
 			        "currency": "USD",
@@ -338,7 +338,7 @@ def on_message(ws, message):
 						str_close = str(df_features['CLOSE'].ix[-1:][0])
 						print("{0}: {1}, Close: {2}".format(str_date, str_px, str_close))
 						logging.info("{0}: {1}, Close: {2}".format(str_date, str_px, str_close))
-						order = tradeActions(asset, str_px, dt_last_bar = str_date, passthrough = str_close)
+						order = tradeActions(asset, str_px, amount = trade_x, dt_last_bar = str_date, passthrough = str_close)
 					except Exception,e:
 						lr_px = np.array([(0.5,0.5)])
 						order = None
@@ -445,7 +445,7 @@ def main():
 
 	# LOG FILE
 
-	logging.basicConfig(filename = 'CALLS_EURGBP.log', format = "%(asctime)s; %(message)s", datefmt = "%Y-%m-%d %H:%M:%S", level = logging.DEBUG)
+	logging.basicConfig(filename = 'CALLS_EURGBP1.log', format = "%(asctime)s; %(message)s", datefmt = "%Y-%m-%d %H:%M:%S", level = logging.DEBUG)
 
 	#######################################################
 
