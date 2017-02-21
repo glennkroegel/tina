@@ -34,9 +34,9 @@ class Model(object):
 		# raw feature calculation - done first before filters
 		x = copy.deepcopy(self.raw_data)
 		x['WILLR'] = taCalcIndicator(x, 'WILLR', window = 30)
-		x['WILLR_D1'] = x['WILLR'].pct_change()
-		x['WILLR_D2'] = x['WILLR'].pct_change(2)
-		x['WILLR_D5'] = x['WILLR'].pct_change(5)
+		x['WILLR_D1'] = x['WILLR'].diff()
+		x['WILLR_D2'] = x['WILLR'].diff(2)
+		x['WILLR_D5'] = x['WILLR'].diff(5)
 
 		x['RSI'] = taCalcIndicator(x, 'RSI', window = 30)
 
