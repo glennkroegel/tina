@@ -53,9 +53,9 @@ def calcFeaturesLocally(df, asset = 'frxEURGBP'):
 
 	if asset == 'frxEURGBP':
 		df['WILLR'] = taCalcIndicator(df, 'WILLR', window = 30)
-		df['WILLR_D1'] = df['WILLR'].pct_change()
-		df['WILLR_D2'] = df['WILLR'].pct_change(2)
-		df['WILLR_D5'] = df['WILLR'].pct_change(5)
+		df['WILLR_D1'] = df['WILLR'].diff()
+		df['WILLR_D2'] = df['WILLR'].diff(2)
+		df['WILLR_D5'] = df['WILLR'].diff(5)
 		df['RSI'] = taCalcIndicator(df, 'RSI', window = 30)
 		return df
 	else:
@@ -313,7 +313,7 @@ def on_message(ws, message):
 			# FEATURE CALCULATION
 
 			df_features = calcFeaturesLocally(df_bars, asset = asset)
-			df_features.to_csv('vector1.csv')
+			df_features.to_csv('vector2.csv')
 
 			ls_exlude = ['OPEN','HIGH','LOW','CLOSE','VOLUME']
 			cols = [col for col in df_features.columns if col not in ls_exlude]
@@ -403,7 +403,7 @@ def on_message(ws, message):
 		epoch_tick = res['tick']['epoch']
 		dt_tick = dt.datetime.utcfromtimestamp(int(epoch_tick))
 		if (dt_tick.second == 0):
-			tick_history(ws, asset = asset, count = 120, req_id = epoch_tick)
+			tick_history(ws, asset = asset, count = 200, req_id = epoch_tick)
 		elif (dt_tick.second == 30):
 			try:
 				message = json.dumps({'balance': 1})
@@ -445,7 +445,7 @@ def main():
 
 	# LOG FILE
 
-	logging.basicConfig(filename = 'CALLS_EURGBP1.log', format = "%(asctime)s; %(message)s", datefmt = "%Y-%m-%d %H:%M:%S", level = logging.DEBUG)
+	logging.basicConfig(filename = 'CALLS_EURGBP2.log', format = "%(asctime)s; %(message)s", datefmt = "%Y-%m-%d %H:%M:%S", level = logging.DEBUG)
 
 	#######################################################
 
