@@ -49,25 +49,29 @@ def taCalcIndicator(df, indicator, window = 20):
 
   return df[indicator]
 
-def jarque_bera(df, application = 'WILLR_D1', window = 60):
+def jarque_bera(df, application = 'CLOSE', window = 60):
 
   df = copy.deepcopy(df)
 
   df['jarque_bera'] = pd.rolling_apply(df[application], window, lambda x: stats.jarque_bera(x)[1])
 
   # bin data
+  '''
   intervals = 100.0
   dx = 1.0/intervals
   df['temp'] = df['jarque_bera']
 
   df['temp'].loc[(df['jarque_bera'] < dx)] = 1
   df['temp'].loc[(df['jarque_bera'] >= dx)] = 2
-  '''df['temp'].loc[(df['jarque_bera'] >= dx) & (df['jarque_bera'] < 2*dx)] = 2
+  df['temp'].loc[(df['jarque_bera'] >= dx) & (df['jarque_bera'] < 2*dx)] = 2
   df['temp'].loc[(df['jarque_bera'] >= 2*dx) & (df['jarque_bera'] < 3*dx)] = 3
   df['temp'].loc[(df['jarque_bera'] >= 3*dx) & (df['jarque_bera'] < 4*dx)] = 4
   df['temp'].loc[(df['jarque_bera'] >= 4*dx)] = 5'''
+  
   # Handle NAN issue
-  return pd.get_dummies(df['temp'], prefix = 'JB')
+  #return pd.get_dummies(df['temp'], prefix = 'JB')
+
+  return df['jarque_bera']
 
 def breakout_points(df, delta = 30, quantity = 3):
 
@@ -166,3 +170,31 @@ def width_metric(df, prefix = 'width'):
   df_dummies = pd.get_dummies(df['ribbon_width'], prefix = prefix)
   return df_dummies
   #return df['ribbon_width']
+
+def hour_dummies(df, prefix='hour_'):
+
+  df = copy.deepcopy(df)
+
+  try:
+    df.index = pd.to_datetime(df.index, format='%d/%m/%Y %H:%M')
+  except:
+    df.index = pd.to_datetime(df.index, format='%Y-%m-%d %H:%M:%S')
+  
+  df['hour'] = df.index.hour
+  df_dummies = pd.get_dummies(df['hour'], prefix = prefix)
+
+  return df_dummies
+
+
+
+
+
+
+
+
+
+
+
+
+
+
