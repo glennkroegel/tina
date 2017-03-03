@@ -95,8 +95,8 @@ def breakawayEvent(df, window = 30):
 
   df['Normal'] = (df['CLOSE'] - pd.rolling_min(df['CLOSE'], window))/(pd.rolling_max(df['CLOSE'], window)-pd.rolling_min(df['CLOSE'], window))
   df['event'] = np.zeros(df['Normal'].shape)
-  df['event'].loc[df['Normal'] == 0] = 'down'
-  df['event'].loc[df['Normal'] == 1] = "up"
+  df['event'].loc[df['Normal'] == 0] = -1 #'down'
+  df['event'].loc[df['Normal'] == 1] = 1 #"up"
 
   return df['event']
 
@@ -106,8 +106,8 @@ def ribbon_sma(df):
 
   rolling_means = {}
 
-  for window_length in np.linspace(10,100,10):
-    X = pd.rolling_mean(df['CLOSE'], window = window_length)
+  for window_length in np.linspace(10,200,5):
+    X = pd.rolling_mean(df['CLOSE'], window = int(window_length))
     rolling_means[window_length] = X
     assert(len(X) == len(df))
 
@@ -123,6 +123,21 @@ def ribbon_willr(df):
 
   for window_length in np.linspace(10,50,5):
     X = taCalcIndicator(df, 'WILLR', window = window_length)
+    series_list[window_length] = X
+    assert(len(X) == len(df))
+
+  series_list = pd.DataFrame(series_list, index = df.index)
+
+  return series_list
+
+def ribbon_rsi(df):
+
+  df = copy.deepcopy(df)
+
+  series_list = {}
+
+  for window_length in np.linspace(10,190,5):
+    X = taCalcIndicator(df, 'RSI', window = window_length)
     series_list[window_length] = X
     assert(len(X) == len(df))
 
