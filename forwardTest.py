@@ -17,7 +17,7 @@ options = {'time_period': 5,
 				'hour_start': 9,
 				'hour_end': 18}
 
-test = Model('EURUSD1_201617.csv', options)
+test = Model('EURUSD1_2016b.csv', options)
 test.model = joblib.load('model.pkl')
 test.scaler = joblib.load('scaler.pkl')
 

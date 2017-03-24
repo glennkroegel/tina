@@ -74,8 +74,8 @@ def main():
   df_px.index = df_y.index'''
   df_px.to_csv('PX.csv', index_label = 'DATETIME')
 
-  threshold_up = 0.67
-  threshold_down = 0.33
+  threshold_up = 0.55
+  threshold_down = 0.45
 
   for i in range(1, len(df_data['Probability'])):
 

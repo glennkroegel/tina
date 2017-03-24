@@ -8,15 +8,20 @@ import cPickle as pickle
 from calculations import *
 
 from sklearn import linear_model, cross_validation
-from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier, RadiusNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, GradientBoostingClassifier, BaggingClassifier, AdaBoostClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.svm import SVC
 from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import accuracy_score
-from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler, LabelEncoder
-import xgboost as xgb
+from sklearn.preprocessing import StandardScaler, MaxAbsScaler, RobustScaler, MinMaxScaler, LabelEncoder
+
+from keras.models import Sequential
+from keras.layers import Dense, Dropout, LSTM, Activation
+from keras.layers.advanced_activations import PReLU
+from keras.layers.normalization import BatchNormalization
+from keras import regularizers
+from talib import abstract
 
 class Model(object):
 	"""docstring for ClassName"""
@@ -27,6 +32,7 @@ class Model(object):
 		self.y = self.binaryClassification()
 		self.x = self.features()
 		self.x, self.y = self.prepareData()
+		self.feature_list = [col for col in self.x if col not in self.raw_data.columns]
 		
 		self.model = None
 		self.scaler = None
@@ -46,24 +52,37 @@ class Model(object):
 		
 		x['WILLR'] = taCalcIndicator(x, 'WILLR', window = 30)
 		x['WILLR_D1'] = x['WILLR'].diff()
-		'''x['WILLR_D2'] = x['WILLR'].diff(2)
-		x['WILLR_D5'] = x['WILLR'].diff(5)'''
+		x['WILLR_D2'] = x['WILLR'].diff(2)
+		x['WILLR_D5'] = x['WILLR'].diff(5)
+
+		x['ADOSC'] = taCalcIndicator(x, 'ADOSC', window = 30)
+		x['ADOSC_D1'] = x['ADOSC'].diff()
+
+		x['ULTOSC'] = taCalcIndicator(x, 'ULTOSC', window = 30)
+		x['ULTOSC_D1'] = x['ULTOSC'].diff()
 
 		x['RSI'] = taCalcIndicator(x, 'RSI', window = 30)
 		x['RSI_D1'] = x['RSI'].diff()
-		#x['RSI_D2'] = x['RSI'].diff(2)
-		#x['RSI_D5'] = x['RSI'].diff(5)
+		x['RSI_D2'] = x['RSI'].diff(2)
+		x['RSI_D5'] = x['RSI'].diff(5)
 
-		#x['CCI'] = taCalcIndicator(x, 'CCI', window = 30)
-		#x['CCI_D1'] = x['CCI'].diff()
+		x['CCI'] = taCalcIndicator(x, 'CCI', window = 30)
+		x['CCI_D1'] = x['CCI'].diff()
 
-		#x['BOP'] = taCalcIndicator(x, 'BOP')
-		#x['dBOP'] = x['BOP'].diff()
+		x['BOP'] = taCalcIndicator(x, 'BOP')
+		x['dBOP'] = x['BOP'].diff()
+
+		x['ATR'] = taCalcIndicator(x, 'ATR', window = 14)
+		x['dATR'] = x['ATR'].diff()
 
 		x['ADX'] = taCalcIndicator(x, 'ADX', window = 14)
 		x['dADX'] = x['ADX'].diff()
+
+		#x['ROC'] = taCalcIndicator(x, 'ROC')
+		x['sigma'] = x['CLOSE'].rolling(window = 30, center = False).std()
+		x['dsigma'] = x['sigma'].diff()
 	
-		x['BP30'] = breakawayEvent(x, window =30)
+		#x['BP30'] = breakawayEvent(x, window =30)
 		'''x['BP31'] = breakawayEvent(x, window =31)
 		x['BP32'] = breakawayEvent(x, window =32)
 		x['BP33'] = breakawayEvent(x, window =33)
@@ -93,9 +112,11 @@ class Model(object):
   		except:
   			x.index = pd.to_datetime(x.index, format='%Y-%m-%d %H:%M:%S')
 		
-		x = pd.concat([x, hour_dummies(x)], axis=1)'''
+		#x = pd.concat([x, hour_dummies(x)], axis=1)
+		x['hour'] = x.index.hour/100'''
 
-		
+
+		print x.tail(10)
 
 		return x
 
@@ -123,15 +144,15 @@ class Model(object):
 		temp = temp.dropna()
 		temp = temp.loc[temp['y'] != 2]
 		# Filter
-		temp = temp.loc[x['BP30'] != 0]
+		#temp = temp.loc[x['BP30'] != 0]
 		#temp = temp.loc[x['ADX']>25]
 
-		try:
+		'''try:
 			temp.index = pd.to_datetime(temp.index, format = "%d/%m/%Y %H:%M")
 		except:
 			temp.index = pd.to_datetime(temp.index, format = "%Y-%m-%d %H:%M:%S")
 
-		temp = temp.between_time(dt.time(self.options['hour_start'],00), dt.time(self.options['hour_end'],00))
+		temp = temp.between_time(dt.time(self.options['hour_start'],00), dt.time(self.options['hour_end'],00))'''
 
 		x_prepared = temp.drop('y',1)
 		y_prepared = temp[['y']]
@@ -147,6 +168,11 @@ class Model(object):
 		# allows child of class without training 
 		# for forward test
 		self.X_train, self.X_test, self.Y_train, self.Y_test = self.split()
+
+		if self.options['scale'] == True:
+			self.X_train, self.X_test = self.scale(self.X_train, self.X_test)
+
+		print self.X_test[1000]
 		self.model = self.train()
 		self.score = self.evaluate()
 
@@ -158,55 +184,86 @@ class Model(object):
 		y = self.y.values.ravel()
 		assert(len(x) == len(y))
 
-		# Scale - move elsewhere
-		if self.options['scale'] == True:
-			self.scaler = StandardScaler() #RobustScaler(with_centering=False, with_scaling=True, quantile_range=(10.0, 90.0), copy=True) #MinMaxScaler(feature_range = [-1,1])
-			x = self.scaler.fit_transform(x)
-			print x[1001]
+		#x_train, x_test, y_train, y_test = cross_validation.train_test_split(x, y, train_size = self.options['split'], random_state = 42)
 
-		x_train, x_test, y_train, y_test = cross_validation.train_test_split(x, y, train_size = self.options['split'], random_state = 42)
+		p = 0.8
+		ix_train = int(p*len(x))
+		x_train = x[0:ix_train]
+		x_test = x[ix_train:]
+		y_train = y[0:ix_train]
+		y_test = y[ix_train:]
 
 		return x_train, x_test, y_train, y_test
 
+	def scale(self, x_train, x_test):
+
+		self.scaler = MinMaxScaler(feature_range = [0,1])#RobustScaler(with_centering=False, with_scaling=True, quantile_range=(10.0, 90.0), copy=True)#MinMaxScaler(feature_range = [0,1])
+		x_train = self.scaler.fit_transform(x_train)
+		x_test = self.scaler.transform(x_test)
+
+		return x_train, x_test
+
 
 	def train(self):
+
 		# train model
 		ls_x = self.X_train
 		ls_y = self.Y_train
-		# model type
-		#clf = GaussianNB()
-		#clf = MLPClassifier(activation='relu', hidden_layer_sizes=(100,))
-		#clf = SVC()
-		#clf = KNeighborsClassifier(n_neighbors=200, weights='uniform', algorithm='auto', leaf_size=2500) 
-		#clf = AdaBoostClassifier()
-		#clf = RadiusNeighborsClassifier(leaf_size=1000)
-		'''clf = RandomForestClassifier(n_estimators = 3000, max_features = None , criterion = 'gini', min_samples_leaf = 250, n_jobs = -1,
-									random_state = 62, class_weight = 'balanced', bootstrap = False)'''
-
-		# META ESTIMATORS
-		#classifier = RandomForestClassifier(n_estimators = 2000, max_features = 'auto' , criterion = 'gini', min_samples_leaf = 250, n_jobs = -1,
-									#random_state = 62, class_weight = 'balanced', bootstrap = False)
-		#clf = BaggingClassifier(classifier)
-
-
-		# XGBOOST
-		clf = xgb.XGBClassifier(n_estimators=5000, learning_rate=0.01, max_depth=5, gamma=1)
-
 		assert not np.any(np.isnan(ls_x) | np.isinf(ls_x))
-		clf.fit(ls_x, ls_y)
+
+		print self.feature_list
+		feature_count = len(self.feature_list)
+		x_test = self.X_test
+
+		'''clf = Sequential()
+		clf.add(Dense(128, input_shape=(feature_count,)))
+		clf.add(Activation('relu'))
+		clf.add(Dense(64))
+		clf.add(Activation('relu'))
+		clf.add(Dense(12))
+		clf.add(Activation('relu'))
+		clf.add(Dense(1))
+		clf.add(Activation('sigmoid'))'''
+
+		ls_x = np.reshape(ls_x, [ls_x.shape[0], 1, ls_x.shape[1]])
+		x_test = np.reshape(self.X_test, [self.X_test.shape[0], 1, self.X_test.shape[1]])
+
+		clf = Sequential()
+		clf.add(LSTM(4, input_dim=feature_count))
+		clf.add(Activation('relu'))
+		'''clf.add(LSTM(4, return_sequences=True))
+		clf.add(Activation('relu'))
+		clf.add(LSTM(2))
+		clf.add(Activation('relu'))'''
+		clf.add(Dense(1))
+		clf.add(Activation('sigmoid'))
+
+		clf.compile(optimizer='rmsprop', loss='binary_crossentropy', metrics=['accuracy'])
+		clf.fit(ls_x, ls_y, batch_size=1000, validation_data=(x_test, self.Y_test), nb_epoch=20)
+
 		return clf
 
 	def predict_y(self):
 
 		assert self.model is not None
-		y_predictions = self.model.predict(self.X_test)
+		try:
+			x_test = np.reshape(self.X_test, [self.X_test.shape[0], 1, self.X_test.shape[1]])
+			y_predictions = self.model.predict(x_test)
+		except:
+			y_predictions = self.model.predict(self.X_test)
+
+		y_predictions = np.round(y_predictions)
 
 		return y_predictions
 
 	def predict_px(self):
 
 		assert self.model is not None
-		px = self.model.predict_proba(self.X_test)
+		try:
+			x_test = np.reshape(self.X_test, [self.X_test.shape[0], 1, self.X_test.shape[1]])
+			px = self.model.predict_proba(x_test)
+		except:
+			px = self.model.predict_proba(self.X_test)
 
 		return px
 
@@ -215,8 +272,7 @@ class Model(object):
 		assert self.model is not None
 		self.predictions = self.predict_y()
 		self.px = self.predict_px()
-
-		score = self.model.score(self.X_test, self.Y_test)
+		print self.predictions
 		score = accuracy_score(self.Y_test, self.predictions)
 		return score
 
@@ -250,18 +306,30 @@ class Model(object):
 			assert self.scaler is not None
 			x = self.scaler.transform(x)
 		y = child.y.values.ravel()
-		px = self.model.predict_proba(x)
-		child.score = self.model.score(x, y)
-		print child.score
+		try:
+			px = self.model.predict_proba(x)
+		except:
+			x = np.reshape(x, [x.shape[0], 1, x.shape[1]])
+			px = self.model.predict_proba(x)
 
+		child.score = accuracy_score(y, np.round(px))
+		print child.score
 		# Result formatting for backtest
-		df_result = pd.DataFrame(zip(y,px[:,1]))
+		try:
+			df_result = pd.DataFrame(zip(y,px[:,1]))
+		except:
+			print y.shape
+			print px.shape
+			px = [float(x) for x in px]
+			print min(px)
+			print max(px)
+			df_result = pd.DataFrame(zip(y,px))
 		df_result.to_csv('forward_test.csv')
 
 def main():
 
 	options = {'time_period': 5,
-				'split': 0.7,
+				'split': 0.5,
 				'classification_method': 'on_close',
 				'scale': True,
 				'hour_start': 9,
@@ -272,8 +340,8 @@ def main():
 	my_model.x.to_csv('feature_vector.csv')
 	my_model.train_model()
 	print my_model.score
-	my_model.export()
-	#my_model.forwardTest('EURGBP1_201415.csv')
+	#my_model.export()
+	my_model.forwardTest('EURUSD1_2016b.csv')
 
 if __name__ == "__main__":
 

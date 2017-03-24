@@ -106,7 +106,7 @@ def ribbon_sma(df):
 
   rolling_means = {}
 
-  for window_length in np.linspace(10,200,5):
+  for window_length in np.linspace(5,20,5):
     X = pd.rolling_mean(df['CLOSE'], window = int(window_length))
     rolling_means[window_length] = X
     assert(len(X) == len(df))
@@ -162,9 +162,9 @@ def distance_metric(df, prefix = 'hamming'):
     scores[timestamp] = d
 
   df['hamming'] = scores
-  df_dummies = pd.get_dummies(df['hamming'], prefix = prefix)
-
-  return df_dummies
+  #df_dummies = pd.get_dummies(df['hamming'], prefix = prefix)
+  #return df_dummies
+  return df['hamming']
 
 def width_metric(df, prefix = 'width'):
 
@@ -181,10 +181,10 @@ def width_metric(df, prefix = 'width'):
     d = np.max(values)-np.min(values)
     scores[timestamp] = d
 
-  df['ribbon_width'] = np.round(scores,3)
-  df_dummies = pd.get_dummies(df['ribbon_width'], prefix = prefix)
-  return df_dummies
-  #return df['ribbon_width']
+  df['ribbon_width'] = scores #np.round(scores,3)
+  #df_dummies = pd.get_dummies(df['ribbon_width'], prefix = prefix)
+  #return df_dummies
+  return df['ribbon_width']
 
 def hour_dummies(df, prefix='hour_'):
 

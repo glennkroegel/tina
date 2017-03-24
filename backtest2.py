@@ -87,8 +87,8 @@ def main():
   df_px.index = df_y.index'''
   df_px.to_csv('PX.csv', index_label = 'DATETIME')
 
-  threshold_up = 0.67
-  threshold_down = 0.33
+  threshold_up = 0.54
+  threshold_down = 0.46
 
   for i in range(1, len(df_data['Probability'])):
 
@@ -128,10 +128,10 @@ def main():
 
   print '\nSIMULATION SUMMARY:\n'
 
-  start_balance = 500
+  start_balance = 100
   trade_amount = 200
-  win_proportion = 0.7
-  trade_fraction = 0.05
+  win_proportion = 0.85
+  trade_fraction = 0.02
   df_account_balance = pd.DataFrame(np.zeros(df_data['Up Decision'].shape), index = df_data['Up Decision'].index, columns = ['Balance']) 
 
   df_account_balance['Balance'][0] = start_balance
