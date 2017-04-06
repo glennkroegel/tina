@@ -106,7 +106,7 @@ def ribbon_sma(df):
 
   rolling_means = {}
 
-  for window_length in np.linspace(5,20,5):
+  for window_length in np.linspace(10,50,3):
     X = pd.rolling_mean(df['CLOSE'], window = int(window_length))
     rolling_means[window_length] = X
     assert(len(X) == len(df))

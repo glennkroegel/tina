@@ -20,6 +20,7 @@ from keras.models import Sequential
 from keras.layers import Dense, Dropout, LSTM, Activation
 from keras.layers.advanced_activations import PReLU
 from keras.layers.normalization import BatchNormalization
+from keras.constraints import maxnorm
 from keras import regularizers
 from talib import abstract
 
@@ -52,9 +53,9 @@ class Model(object):
 		# raw feature calculation - done first before filters
 		x = copy.deepcopy(self.raw_data)
 		
-		x['WILLR'] = taCalcIndicator(x, 'WILLR', window = 20)
+		x['WILLR'] = taCalcIndicator(x, 'WILLR', window = 30)
 		x['WILLR_D1'] = x['WILLR'].diff()
-		#x['WILLR_D2'] = x['WILLR'].diff(2)
+		x['WILLR_D2'] = x['WILLR'].diff(2)
 		x['WILLR_D5'] = x['WILLR'].diff(5)
 
 		'''x['ADOSC'] = taCalcIndicator(x, 'ADOSC', window = 30)
@@ -63,30 +64,29 @@ class Model(object):
 		x['ULTOSC'] = taCalcIndicator(x, 'ULTOSC', window = 30)
 		x['ULTOSC_D1'] = x['ULTOSC'].diff()'''
 
-		x['RSI'] = taCalcIndicator(x, 'RSI', window = 20)
+		x['RSI'] = taCalcIndicator(x, 'RSI', window = 30)
 		x['RSI_D1'] = x['RSI'].diff()
-		#x['RSI_D2'] = x['RSI'].diff(2)
+		x['RSI_D2'] = x['RSI'].diff(2)
 		x['RSI_D5'] = x['RSI'].diff(5)
 
-		'''x['CCI'] = taCalcIndicator(x, 'CCI', window = 30)
-		x['CCI_D1'] = x['CCI'].diff()
+		#x['CCI'] = taCalcIndicator(x, 'CCI', window = 30)
+		#x['CCI_D1'] = x['CCI'].diff()
 
-		x['BOP'] = taCalcIndicator(x, 'BOP')
+		'''x['BOP'] = taCalcIndicator(x, 'BOP')
 		x['dBOP'] = x['BOP'].diff()
 
 		x['ATR'] = taCalcIndicator(x, 'ATR', window = 14)
 		x['dATR'] = x['ATR'].diff()'''
 
-		x['ADX'] = taCalcIndicator(x, 'ADX', window = 10)
+		x['ADX'] = taCalcIndicator(x, 'ADX', window = 20)
 		#x['dADX'] = x['ADX'].diff()
 
 		#x['ROC'] = taCalcIndicator(x, 'ROC')
-		x['sigma'] = x['CLOSE'].rolling(window = 60, center = False).std()
-		#x['dsigma'] = x['sigma'].diff()
+		x['sigma'] = x['CLOSE'].rolling(window = 30, center = False).std()
+		x['dsigma'] = x['sigma'].diff()
+
+		#x['SMA20-SMA40'] = x['CLOSE'].rolling(window = 40, center = False).mean()-x['CLOSE'].rolling(window = 20, center = False).mean()
 	
-		x['BP5'] = breakawayEvent(x, window =5)
-		x['BP10'] = breakawayEvent(x, window =10)
-		x['BP15'] = breakawayEvent(x, window =15)
 		x['BP30'] = breakawayEvent(x, window =30)
 		'''x['BP31'] = breakawayEvent(x, window =31)
 		x['BP32'] = breakawayEvent(x, window =32)
@@ -94,9 +94,9 @@ class Model(object):
 		x['BP34'] = breakawayEvent(x, window =34)
 		x['BP35'] = breakawayEvent(x, window =35)
 		x['BP36'] = breakawayEvent(x, window =36)'''
-		#x['BP40'] = breakawayEvent(x, window =40)
+		x['BP40'] = breakawayEvent(x, window =40)
 		x['BP60'] = breakawayEvent(x, window =60)
-		#x['BP120'] = breakawayEvent(x, window =120)
+		x['BP120'] = breakawayEvent(x, window =120)
 		
 		# jarque-bera
 		#x = pd.concat([x, jarque_bera(x)], axis=1)
@@ -152,12 +152,12 @@ class Model(object):
 		#temp = temp.loc[x['BP30'] != 0]
 		#temp = temp.loc[x['ADX']>25]
 
-		'''try:
+		try:
 			temp.index = pd.to_datetime(temp.index, format = "%d/%m/%Y %H:%M")
 		except:
 			temp.index = pd.to_datetime(temp.index, format = "%Y-%m-%d %H:%M:%S")
 
-		temp = temp.between_time(dt.time(self.options['hour_start'],00), dt.time(self.options['hour_end'],00))'''
+		temp = temp.between_time(dt.time(self.options['hour_start'],00), dt.time(self.options['hour_end'],00))
 
 		x_prepared = temp.drop('y',1)
 		y_prepared = temp[['y']]
@@ -189,14 +189,14 @@ class Model(object):
 		y = self.y.values.ravel()
 		assert(len(x) == len(y))
 
-		#x_train, x_test, y_train, y_test = cross_validation.train_test_split(x, y, train_size = self.options['split'], random_state = 42)
+		x_train, x_test, y_train, y_test = cross_validation.train_test_split(x, y, train_size = self.options['split'], random_state = 42)
 
-		p = 0.8
+		'''p = 0.8
 		ix_train = int(p*len(x))
 		x_train = x[0:ix_train]
 		x_test = x[ix_train:]
 		y_train = y[0:ix_train]
-		y_test = y[ix_train:]
+		y_test = y[ix_train:]'''
 
 		return x_train, x_test, y_train, y_test
 
@@ -220,34 +220,18 @@ class Model(object):
 		feature_count = len(self.feature_list)
 		x_test = self.X_test
 
-		'''clf = Sequential()
-		clf.add(Dense(128, input_shape=(feature_count,)))
-		clf.add(Activation('relu'))
-		clf.add(Dense(64))
-		clf.add(Activation('relu'))
-		clf.add(Dense(12))
-		clf.add(Activation('relu'))
-		clf.add(Dense(1))
-		clf.add(Activation('sigmoid'))'''
-
-		ls_x = np.reshape(ls_x, [ls_x.shape[0], 1, ls_x.shape[1]])
-		x_test = np.reshape(self.X_test, [self.X_test.shape[0], 1, self.X_test.shape[1]])
-
 		act = PReLU(init='zero', weights=None)
 
 		clf = Sequential()
-		clf.add(LSTM(24, return_sequences=True, input_dim=feature_count))
-		clf.add(Activation('relu'))
+		#clf.add(Dropout(0.2, input_shape=(feature_count,)))
+		clf.add(Dense(24, input_shape=(feature_count,), activation = 'relu'))
 		clf.add(Dropout(0.2))
-		#clf.add(LSTM(16, return_sequences=True))
-		#clf.add(Activation('relu'))
-		clf.add(LSTM(12))
-		clf.add(Activation('relu'))
+		clf.add(Dense(12, activation = 'relu')) # , W_constraint=maxnorm(3)
 		clf.add(Dropout(0.2))
 		clf.add(Dense(1))
 		clf.add(Activation('sigmoid'))
 
-		clf.compile(optimizer='rmsprop', loss='binary_crossentropy', metrics=['accuracy'])
+		clf.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy']) # rmsprop
 		clf.fit(ls_x, ls_y, batch_size=1000, validation_data=(x_test, self.Y_test), nb_epoch=20)
 
 		return clf
@@ -338,7 +322,7 @@ class Model(object):
 def main():
 
 	options = {'time_period': 5,
-				'split': 0.9,
+				'split': 0.8,
 				'classification_method': 'on_close',
 				'scale': True,
 				'hour_start': 9,
@@ -350,7 +334,7 @@ def main():
 	my_model.train_model()
 	print my_model.score
 	#my_model.export()
-	my_model.forwardTest('EURUSD1_2016a.csv')
+	my_model.forwardTest('EURUSD1_201617.csv')
 
 if __name__ == "__main__":
 
