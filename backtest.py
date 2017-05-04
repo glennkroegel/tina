@@ -65,17 +65,15 @@ def main():
   df_px = df_data
   df_data = appendData(df_data)
 
-  '''df_y = pd.read_csv('y.csv', header = None)
-  df_y.columns = ['DATETIME','y']
+  df_y = pd.read_csv('y.csv')
   df_y = df_y.set_index('DATETIME')
   df_y.index = pd.to_datetime(df_y.index, format = "%Y-%m-%d %H:%M:%S")
-  #print df_y.head()
 
-  df_px.index = df_y.index'''
-  df_px.to_csv('PX.csv', index_label = 'DATETIME')
+  df_px.index = df_y.index
+  #df_px.to_csv('PX.csv', index_label = 'DATETIME')
 
-  threshold_up = 0.55
-  threshold_down = 0.45
+  threshold_up = 0.59
+  threshold_down = 0.41
 
   for i in range(1, len(df_data['Probability'])):
 
@@ -102,6 +100,8 @@ def main():
   down_signals = df_data['Down Decision'].sum()
   down_proportion = df_data['Down Correct'].sum()/df_data['Down Decision'].sum()
 
+  total_signals = up_signals + down_signals
+
   days_in_data = len(df_data['Probability'])/(11*20) # 96 fifteen minute periods in a day
   up_signals_daily = up_signals/days_in_data
   down_signals_daily = down_signals/days_in_data
@@ -117,7 +117,7 @@ def main():
 
   start_balance = 0#2000
   trade_amount = 1
-  win_proportion = 0.7
+  win_proportion = 0.8
   df_account_balance = pd.DataFrame(np.zeros(df_data['Up Decision'].shape), index = df_data['Up Decision'].index, columns = ['Balance']) 
 
   df_account_balance['Balance'][0] = start_balance
@@ -142,19 +142,20 @@ def main():
 
   sim_max = df_account_balance['Balance'].max()
   sim_min = df_account_balance['Balance'].min()
-  sim_last = df_account_balance['Balance'][1] #28602-8640
+  sim_last = df_account_balance['Balance'].iloc[-1] #28602-8640
 
   df_account_balance['Profit'] = df_account_balance['Balance'].diff()
   sim_std = df_account_balance['Profit'].std()
   sim_grad = df_account_balance['Profit'].mean()
-  specific_variance = sim_std/sim_grad
+  
+  sharpe = (1e4)*(sim_grad/(sim_std*np.sqrt(total_signals)))
 
   print 'Maximum Simulated Balance: {0}\n'.format(sim_max)
   print 'Minimum Simulated Balance: {0}\n'.format(sim_min)
   print 'Final Balance: {0}\n'.format(sim_last)
-  print 'Monthly Profit: {0}\n'.format(sim_grad*1)
-  print 'Specific Variance (dt = period): {0}'.format(specific_variance)
-
+  #print 'Monthly Profit: {0}\n'.format(sim_grad*1)
+  #print 'Specific Variance (dt = period): {0}'.format(specific_variance)
+  print 'Sharpe ratio: {0}'.format(sharpe)
   # Draw Down
   df_trades = df_data.ix[df_data['Traded'] == 1]
   ls_locs = df_trades.index
@@ -180,6 +181,7 @@ def main():
   print 'Location: {0}'.format(max_loc)
 
   # Plot Simulations
+  df_account_balance.index = df_y.index
   df_account_balance.plot()
   plt.show()
   '''s_x = df_account_balance.index.values

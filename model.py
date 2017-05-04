@@ -7,13 +7,14 @@ import copy
 import cPickle as pickle
 from calculations import *
 
-from sklearn import linear_model, cross_validation
+from sklearn import linear_model, model_selection
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier, RadiusNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, GradientBoostingClassifier, BaggingClassifier, AdaBoostClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.svm import SVC
 from sklearn.neural_network import MLPClassifier
+from sklearn.calibration import CalibratedClassifierCV, calibration_curve
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler, LabelEncoder
 import xgboost as xgb
@@ -46,23 +47,53 @@ class Model(object):
 		
 		x['WILLR'] = taCalcIndicator(x, 'WILLR', window = 30)
 		x['WILLR_D1'] = x['WILLR'].diff()
-		'''x['WILLR_D2'] = x['WILLR'].diff(2)
-		x['WILLR_D5'] = x['WILLR'].diff(5)'''
+		#x['WILLR_D2'] = x['WILLR'].diff(2)
+		#x['WILLR_D5'] = x['WILLR'].diff(5)
+
+		x['xWILLR20'] = calc_crossover(x['WILLR'],-20)
+		x['xWILLR80'] = calc_crossover(x['WILLR'],-80)
+		#del x['WILLR']
 
 		x['RSI'] = taCalcIndicator(x, 'RSI', window = 30)
 		x['RSI_D1'] = x['RSI'].diff()
 		#x['RSI_D2'] = x['RSI'].diff(2)
 		#x['RSI_D5'] = x['RSI'].diff(5)
 
-		#x['CCI'] = taCalcIndicator(x, 'CCI', window = 30)
-		#x['CCI_D1'] = x['CCI'].diff()
+		x['xRSI30'] = calc_crossover(x['RSI'],30)
+		x['xRSI70'] = calc_crossover(x['RSI'],70)
+		#del x['RSI']
+
+		'''x['upper'], x['lower'] = taCalcBBANDS(x)
+		x['X_upper'] = calc_crossover(x['CLOSE']-x['upper'],0)
+		x['X_lower'] = calc_crossover(x['CLOSE']-x['lower'],0)
+		del x['upper']
+		del x['lower']'''
+
+		x['CCI'] = taCalcIndicator(x, 'CCI', window = 30)
+		x['CCI_D1'] = x['CCI'].diff()
+
+		'''x['STOCH_K'], x['STOCH_D'] = taCalcSTOCH(x)
+		x['STOCH_X'] = calc_crossover(x['STOCH_K']-x['STOCH_D'], 0)
+		#x['xSTOCH80'] = calc_crossover(x['STOCH_D'], 80)
+		#x['xSTOCH20'] = calc_crossover(x['STOCH_D'], 20)
+		del x['STOCH_K']
+		del x['STOCH_D']'''
 
 		#x['BOP'] = taCalcIndicator(x, 'BOP')
 		#x['dBOP'] = x['BOP'].diff()
 
-		x['ADX'] = taCalcIndicator(x, 'ADX', window = 14)
-		x['dADX'] = x['ADX'].diff()
+		#x['ADX'] = taCalcIndicator(x, 'ADX', window = 14)
+		#x['dADX'] = x['ADX'].diff()
+
+		#x['xADX25'] = calc_crossover(x['ADX'], 25)
+		#x['xADX20'] = calc_crossover(x['ADX'], 20)
+		#del x['ADX']
+
+		#x['sigma'] = x['CLOSE'].rolling(window = 30, center = False).std()
 	
+		#x['BP5'] = breakawayEvent(x, window =5)
+		x['BP10'] = breakawayEvent(x, window =10)
+		x['BP15'] = breakawayEvent(x, window =15)
 		x['BP30'] = breakawayEvent(x, window =30)
 		'''x['BP31'] = breakawayEvent(x, window =31)
 		x['BP32'] = breakawayEvent(x, window =32)
@@ -70,10 +101,32 @@ class Model(object):
 		x['BP34'] = breakawayEvent(x, window =34)
 		x['BP35'] = breakawayEvent(x, window =35)
 		x['BP36'] = breakawayEvent(x, window =36)
-		x['BP40'] = breakawayEvent(x, window =40)
+		x['BP40'] = breakawayEvent(x, window =40)'''
 		x['BP60'] = breakawayEvent(x, window =60)
-		x['BP120'] = breakawayEvent(x, window =120)'''
+		#x['BP120'] = breakawayEvent(x, window =120)
+
+		#x['H10'] = x['BP10'].rolling(window=10, center=False).sum()
+		x['H20'] = x['BP10'].rolling(window=20, center=False).sum()
+		#x['H30'] = x['BP10'].rolling(window=30, center=False).sum()
+
+		x['dH20'] = x['H20'].diff()
+
+		# Take break flags
+		'''x['temp'] = np.absolute(x['BP30'])
+		x['temp'] = x['temp'].rolling(window=3, center=False).sum()
+		x['STOP1'] = np.zeros(x['temp'].shape)
+		x['STOP1'].loc[x['temp']>=3] = 1 # stop condition reached
+		x['STOP1'] = x['STOP1'].rolling(window=20, center=False).sum() # how often stop condition occured in period. 
+		del x['temp']'''
+
+		# Moving averages
+		#x['SMA10-20'] = x['CLOSE'].rolling(window=10, center=False).mean()-x['CLOSE'].rolling(window=20, center=False).mean()
+		#x['SMA50-100'] = x['CLOSE'].rolling(window=20, center=False).mean()-x['CLOSE'].rolling(window=100, center=False).mean()
+		#x['SMA50-200'] = x['CLOSE'].rolling(window=50, center=False).mean()-x['CLOSE'].rolling(window=200, center=False).mean()
 		
+		#x['xSMA'] = calc_crossover(x['SMA10-20'],0)
+		#del x['SMA10-20']
+
 		# jarque-bera
 		#x = pd.concat([x, jarque_bera(x)], axis=1)
 
@@ -123,8 +176,10 @@ class Model(object):
 		temp = temp.dropna()
 		temp = temp.loc[temp['y'] != 2]
 		# Filter
-		temp = temp.loc[x['BP30'] != 0]
+		temp = temp.loc[x['BP10'] != 0]
+		#temp = temp.loc[np.absolute(x['H20'] <= 2)]
 		#temp = temp.loc[x['ADX']>25]
+		#temp = temp.loc[x['STOP1'] == 0]
 
 		try:
 			temp.index = pd.to_datetime(temp.index, format = "%d/%m/%Y %H:%M")
@@ -160,11 +215,11 @@ class Model(object):
 
 		# Scale - move elsewhere
 		if self.options['scale'] == True:
-			self.scaler = StandardScaler() #RobustScaler(with_centering=False, with_scaling=True, quantile_range=(10.0, 90.0), copy=True) #MinMaxScaler(feature_range = [-1,1])
+			self.scaler = MinMaxScaler(feature_range = [0,1])#RobustScaler(with_centering=False, with_scaling=True, quantile_range=(5.0, 95.0), copy=True)#StandardScaler()#MinMaxScaler(feature_range = [0,1]) #RobustScaler(with_centering=False, with_scaling=True, quantile_range=(10.0, 90.0), copy=True) #MinMaxScaler(feature_range = [-1,1])
 			x = self.scaler.fit_transform(x)
 			print x[1001]
 
-		x_train, x_test, y_train, y_test = cross_validation.train_test_split(x, y, train_size = self.options['split'], random_state = 42)
+		x_train, x_test, y_train, y_test = model_selection.train_test_split(x, y, train_size = self.options['split'], random_state = 42)
 
 		return x_train, x_test, y_train, y_test
 
@@ -174,14 +229,17 @@ class Model(object):
 		ls_x = self.X_train
 		ls_y = self.Y_train
 		# model type
+		#clf = LogisticRegression(C=1, class_weight='balanced', solver='lbfgs')
+		clf = CalibratedClassifierCV(LogisticRegression(C=1, class_weight='balanced', solver='lbfgs'), method='sigmoid', cv=3) #, method='isotonic'
 		#clf = GaussianNB()
 		#clf = MLPClassifier(activation='relu', hidden_layer_sizes=(100,))
+		#clf = SVC(C=1, probability=True, tol=0.1, class_weight='balanced', decision_function_shape='ovr', max_iter = 100)
 		#clf = SVC()
 		#clf = KNeighborsClassifier(n_neighbors=200, weights='uniform', algorithm='auto', leaf_size=2500) 
 		#clf = AdaBoostClassifier()
 		#clf = RadiusNeighborsClassifier(leaf_size=1000)
-		'''clf = RandomForestClassifier(n_estimators = 3000, max_features = None , criterion = 'gini', min_samples_leaf = 250, n_jobs = -1,
-									random_state = 62, class_weight = 'balanced', bootstrap = False)'''
+		'''clf = RandomForestClassifier(n_estimators = 350, max_features = None , criterion = 'gini', min_samples_leaf = 250, n_jobs = -1,
+									random_state = 62, class_weight = 'balanced', bootstrap = True, oob_score = True, min_weight_fraction_leaf = 0.00)'''
 
 		# META ESTIMATORS
 		#classifier = RandomForestClassifier(n_estimators = 2000, max_features = 'auto' , criterion = 'gini', min_samples_leaf = 250, n_jobs = -1,
@@ -190,7 +248,13 @@ class Model(object):
 
 
 		# XGBOOST
-		clf = xgb.XGBClassifier(n_estimators=5000, learning_rate=0.01, max_depth=5, gamma=1)
+		#clf = xgb.XGBClassifier(n_estimators=500, learning_rate=0.05, max_depth=7, gamma=1)
+
+		'''clf = xgb.XGBClassifier(base_score=0.5, colsample_bylevel=1, colsample_bytree=1,
+								gamma=0, learning_rate=0.05, max_delta_step=0, max_depth=5,
+								min_child_weight=1, missing=None, n_estimators=500, nthread=-1,
+								objective='binary:logistic', reg_alpha=0, reg_lambda=1,
+								scale_pos_weight=1, seed=0, silent=True, subsample=1)'''
 
 		assert not np.any(np.isnan(ls_x) | np.isinf(ls_x))
 		clf.fit(ls_x, ls_y)
@@ -264,10 +328,10 @@ def main():
 				'split': 0.7,
 				'classification_method': 'on_close',
 				'scale': True,
-				'hour_start': 9,
-				'hour_end': 18}
+				'hour_start': 0,
+				'hour_end': 9}
 
-	my_model = Model('EURUSD1_201415.csv', options)
+	my_model = Model('USDJPY1_201415.csv', options)
 	#print my_model.x.tail(10)
 	my_model.x.to_csv('feature_vector.csv')
 	my_model.train_model()

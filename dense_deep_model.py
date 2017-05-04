@@ -55,8 +55,11 @@ class Model(object):
 		
 		x['WILLR'] = taCalcIndicator(x, 'WILLR', window = 30)
 		x['WILLR_D1'] = x['WILLR'].diff()
-		x['WILLR_D2'] = x['WILLR'].diff(2)
-		x['WILLR_D5'] = x['WILLR'].diff(5)
+		#x['WILLR_D2'] = x['WILLR'].diff(2)
+		#x['WILLR_D5'] = x['WILLR'].diff(5)
+
+		x['xWILLR20'] = calc_crossover(x['WILLR'],-20)
+		x['xWILLR80'] = calc_crossover(x['WILLR'],-80)
 
 		'''x['ADOSC'] = taCalcIndicator(x, 'ADOSC', window = 30)
 		x['ADOSC_D1'] = x['ADOSC'].diff()
@@ -66,11 +69,14 @@ class Model(object):
 
 		x['RSI'] = taCalcIndicator(x, 'RSI', window = 30)
 		x['RSI_D1'] = x['RSI'].diff()
-		x['RSI_D2'] = x['RSI'].diff(2)
-		x['RSI_D5'] = x['RSI'].diff(5)
+		#x['RSI_D2'] = x['RSI'].diff(2)
+		#x['RSI_D5'] = x['RSI'].diff(5)
 
-		#x['CCI'] = taCalcIndicator(x, 'CCI', window = 30)
-		#x['CCI_D1'] = x['CCI'].diff()
+		x['xRSI30'] = calc_crossover(x['RSI'],30)
+		x['xRSI70'] = calc_crossover(x['RSI'],70)
+
+		x['CCI'] = taCalcIndicator(x, 'CCI', window = 30)
+		x['CCI_D1'] = x['CCI'].diff()
 
 		'''x['BOP'] = taCalcIndicator(x, 'BOP')
 		x['dBOP'] = x['BOP'].diff()
@@ -78,25 +84,32 @@ class Model(object):
 		x['ATR'] = taCalcIndicator(x, 'ATR', window = 14)
 		x['dATR'] = x['ATR'].diff()'''
 
-		x['ADX'] = taCalcIndicator(x, 'ADX', window = 20)
+		#x['ADX'] = taCalcIndicator(x, 'ADX', window = 20)
 		#x['dADX'] = x['ADX'].diff()
 
 		#x['ROC'] = taCalcIndicator(x, 'ROC')
-		x['sigma'] = x['CLOSE'].rolling(window = 30, center = False).std()
-		x['dsigma'] = x['sigma'].diff()
+		#x['sigma'] = x['CLOSE'].rolling(window = 30, center = False).std()
+		#x['dsigma'] = x['sigma'].diff()
 
 		#x['SMA20-SMA40'] = x['CLOSE'].rolling(window = 40, center = False).mean()-x['CLOSE'].rolling(window = 20, center = False).mean()
 	
+		#x['BP5'] = breakawayEvent(x, window =5)
+		x['BP10'] = breakawayEvent(x, window =10)
+		x['BP15'] = breakawayEvent(x, window =15)
 		x['BP30'] = breakawayEvent(x, window =30)
 		'''x['BP31'] = breakawayEvent(x, window =31)
 		x['BP32'] = breakawayEvent(x, window =32)
 		x['BP33'] = breakawayEvent(x, window =33)
 		x['BP34'] = breakawayEvent(x, window =34)
 		x['BP35'] = breakawayEvent(x, window =35)
-		x['BP36'] = breakawayEvent(x, window =36)'''
-		x['BP40'] = breakawayEvent(x, window =40)
+		x['BP36'] = breakawayEvent(x, window =36)
+		x['BP40'] = breakawayEvent(x, window =40)'''
 		x['BP60'] = breakawayEvent(x, window =60)
-		x['BP120'] = breakawayEvent(x, window =120)
+		#x['BP120'] = breakawayEvent(x, window =120)
+
+		x['H20'] = x['BP10'].rolling(window=20, center=False).sum()
+
+		x['dH20'] = x['H20'].diff()
 		
 		# jarque-bera
 		#x = pd.concat([x, jarque_bera(x)], axis=1)
@@ -149,7 +162,7 @@ class Model(object):
 		temp = temp.dropna()
 		temp = temp.loc[temp['y'] != 2]
 		# Filter
-		#temp = temp.loc[x['BP30'] != 0]
+		temp = temp.loc[x['BP10'] != 0]
 		#temp = temp.loc[x['ADX']>25]
 
 		try:
@@ -325,16 +338,16 @@ def main():
 				'split': 0.8,
 				'classification_method': 'on_close',
 				'scale': True,
-				'hour_start': 9,
-				'hour_end': 18}
+				'hour_start': 0,
+				'hour_end': 9}
 
-	my_model = Model('EURUSD1_201415.csv', options)
+	my_model = Model('USDJPY1_201415.csv', options)
 	#print my_model.x.tail(10)
 	my_model.x.to_csv('feature_vector.csv')
 	my_model.train_model()
 	print my_model.score
 	#my_model.export()
-	my_model.forwardTest('EURUSD1_201617.csv')
+	my_model.forwardTest('USDJPY1_201617.csv')
 
 if __name__ == "__main__":
 
