@@ -65,15 +65,15 @@ def main():
   df_px = df_data
   df_data = appendData(df_data)
 
-  df_y = pd.read_csv('y.csv')
-  df_y = df_y.set_index('DATETIME')
-  df_y.index = pd.to_datetime(df_y.index, format = "%Y-%m-%d %H:%M:%S")
+  #df_y = pd.read_csv('y.csv')
+  #df_y = df_y.set_index('DATETIME')
+  #df_y.index = pd.to_datetime(df_y.index, format = "%Y-%m-%d %H:%M:%S")
 
-  df_px.index = df_y.index
+  #df_px.index = df_y.index
   #df_px.to_csv('PX.csv', index_label = 'DATETIME')
 
-  threshold_up = 0.59
-  threshold_down = 0.41
+  threshold_up = 0.6
+  threshold_down = 0.42
 
   for i in range(1, len(df_data['Probability'])):
 
@@ -181,7 +181,7 @@ def main():
   print 'Location: {0}'.format(max_loc)
 
   # Plot Simulations
-  df_account_balance.index = df_y.index
+  #df_account_balance.index = df_y.index
   df_account_balance.plot()
   plt.show()
   '''s_x = df_account_balance.index.values
