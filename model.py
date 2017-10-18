@@ -15,7 +15,7 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.svm import SVC
 from sklearn.neural_network import MLPClassifier
 from sklearn.calibration import CalibratedClassifierCV, calibration_curve
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, brier_score_loss
 from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler, LabelEncoder
 import xgboost as xgb
 
@@ -72,17 +72,23 @@ class Model(object):
 		x['CCI'] = taCalcIndicator(x, 'CCI', window = 30)
 		x['CCI_D1'] = x['CCI'].diff()
 
-		'''x['STOCH_K'], x['STOCH_D'] = taCalcSTOCH(x)
-		x['STOCH_X'] = calc_crossover(x['STOCH_K']-x['STOCH_D'], 0)
+		# MACD
+		#x['macd'], x['signal'], x['histogram'] = taCalcMACD(x)
+		#x['xhistogram'] = calc_crossover(x['histogram'],0)
+		#del x['macd']
+		#del x['signal']
+
+		#x['STOCH_K'], x['STOCH_D'] = taCalcSTOCH(x)
+		#x['STOCH_X'] = calc_crossover(x['STOCH_K']-x['STOCH_D'], 0)
 		#x['xSTOCH80'] = calc_crossover(x['STOCH_D'], 80)
 		#x['xSTOCH20'] = calc_crossover(x['STOCH_D'], 20)
-		del x['STOCH_K']
-		del x['STOCH_D']'''
+		#del x['STOCH_K']
+		#del x['STOCH_D']
 
 		#x['BOP'] = taCalcIndicator(x, 'BOP')
 		#x['dBOP'] = x['BOP'].diff()
 
-		#x['ADX'] = taCalcIndicator(x, 'ADX', window = 14)
+		x['ADX'] = np.log(taCalcIndicator(x, 'ADX', window = 30))
 		#x['dADX'] = x['ADX'].diff()
 
 		#x['xADX25'] = calc_crossover(x['ADX'], 25)
@@ -90,6 +96,8 @@ class Model(object):
 		#del x['ADX']
 
 		#x['sigma'] = x['CLOSE'].rolling(window = 30, center = False).std()
+
+		#x['ATR'] = np.log(taCalcIndicator(x, 'ATR', window = 30))
 	
 		#x['BP5'] = breakawayEvent(x, window =5)
 		x['BP10'] = breakawayEvent(x, window =10)
@@ -106,10 +114,10 @@ class Model(object):
 		#x['BP120'] = breakawayEvent(x, window =120)
 
 		#x['H10'] = x['BP10'].rolling(window=10, center=False).sum()
-		x['H20'] = x['BP10'].rolling(window=20, center=False).sum()
+		#x['H20'] = x['BP10'].rolling(window=20, center=False).sum()
 		#x['H30'] = x['BP10'].rolling(window=30, center=False).sum()
 
-		x['dH20'] = x['H20'].diff()
+		#x['dH20'] = x['H20'].diff()
 
 		# Take break flags
 		'''x['temp'] = np.absolute(x['BP30'])
@@ -148,8 +156,6 @@ class Model(object):
 		
 		x = pd.concat([x, hour_dummies(x)], axis=1)'''
 
-		
-
 		return x
 
 	def binaryClassification(self):
@@ -177,8 +183,10 @@ class Model(object):
 		temp = temp.loc[temp['y'] != 2]
 		# Filter
 		temp = temp.loc[x['BP10'] != 0]
+		#temp = temp.loc[x['BP30'] != 0]
 		#temp = temp.loc[np.absolute(x['H20'] <= 2)]
-		#temp = temp.loc[x['ADX']>25]
+		temp = temp.loc[x['ADX']>=3]
+		#temp = temp.loc[x['ATR']>=-8.0]
 		#temp = temp.loc[x['STOP1'] == 0]
 
 		try:
@@ -229,17 +237,20 @@ class Model(object):
 		ls_x = self.X_train
 		ls_y = self.Y_train
 		# model type
-		#clf = LogisticRegression(C=1, class_weight='balanced', solver='lbfgs')
-		clf = CalibratedClassifierCV(LogisticRegression(C=1, class_weight='balanced', solver='lbfgs'), method='sigmoid', cv=3) #, method='isotonic'
+		clf = LogisticRegression(C=1, class_weight='balanced', solver='lbfgs')
+		#clf = CalibratedClassifierCV(LogisticRegression(C=1000000, class_weight='balanced', solver='lbfgs'), method='sigmoid', cv=3) #, method='isotonic'
 		#clf = GaussianNB()
 		#clf = MLPClassifier(activation='relu', hidden_layer_sizes=(100,))
 		#clf = SVC(C=1, probability=True, tol=0.1, class_weight='balanced', decision_function_shape='ovr', max_iter = 100)
+		#clf = SVC(C=1, kernel='poly', degree=4, probability=True, class_weight='balanced', verbose=1)
 		#clf = SVC()
 		#clf = KNeighborsClassifier(n_neighbors=200, weights='uniform', algorithm='auto', leaf_size=2500) 
 		#clf = AdaBoostClassifier()
 		#clf = RadiusNeighborsClassifier(leaf_size=1000)
-		'''clf = RandomForestClassifier(n_estimators = 350, max_features = None , criterion = 'gini', min_samples_leaf = 250, n_jobs = -1,
-									random_state = 62, class_weight = 'balanced', bootstrap = True, oob_score = True, min_weight_fraction_leaf = 0.00)'''
+		rf = RandomForestClassifier(n_estimators = 500, max_features = None , criterion = 'gini', min_samples_leaf = 100, n_jobs = -1,
+									random_state = 62, class_weight = 'balanced', bootstrap = True, oob_score = True, min_weight_fraction_leaf = 0.00)
+		
+		clf = CalibratedClassifierCV(rf, method='sigmoid', cv=2)
 
 		# META ESTIMATORS
 		#classifier = RandomForestClassifier(n_estimators = 2000, max_features = 'auto' , criterion = 'gini', min_samples_leaf = 250, n_jobs = -1,
@@ -281,6 +292,11 @@ class Model(object):
 		self.px = self.predict_px()
 
 		score = self.model.score(self.X_test, self.Y_test)
+
+		# BRIER score - for calibrated models - lower the better
+		brier_score = brier_score_loss(self.Y_test, self.predictions)
+		print("Brier Score: {0}".format(brier_score)) 
+
 		score = accuracy_score(self.Y_test, self.predictions)
 		return score
 
@@ -328,8 +344,8 @@ def main():
 				'split': 0.7,
 				'classification_method': 'on_close',
 				'scale': True,
-				'hour_start': 0,
-				'hour_end': 9}
+				'hour_start': 9,
+				'hour_end': 18}
 
 	my_model = Model('USDJPY1_201415.csv', options)
 	#print my_model.x.tail(10)

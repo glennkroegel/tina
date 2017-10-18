@@ -54,7 +54,7 @@ def appendData(df):
 
   return df
 
-def getTradeAmount(balance, trade_fraction, limit = 10000):
+def getTradeAmount(balance, trade_fraction, limit = 5000):
 
   amount = balance*trade_fraction
 
@@ -78,17 +78,15 @@ def main():
   df_px = df_data
   df_data = appendData(df_data)
 
-  '''df_y = pd.read_csv('y.csv', header = None)
-  df_y.columns = ['DATETIME','y']
+  df_y = pd.read_csv('y.csv')
   df_y = df_y.set_index('DATETIME')
   df_y.index = pd.to_datetime(df_y.index, format = "%Y-%m-%d %H:%M:%S")
-  #print df_y.head()
 
-  df_px.index = df_y.index'''
+  df_px.index = df_y.index
   df_px.to_csv('PX.csv', index_label = 'DATETIME')
 
-  threshold_up = 0.54
-  threshold_down = 0.46
+  threshold_up = 0.58
+  threshold_down = 0.42
 
   for i in range(1, len(df_data['Probability'])):
 
@@ -128,10 +126,10 @@ def main():
 
   print '\nSIMULATION SUMMARY:\n'
 
-  start_balance = 100
+  start_balance = 400
   trade_amount = 200
-  win_proportion = 0.85
-  trade_fraction = 0.02
+  win_proportion = 0.77
+  trade_fraction = 0.03
   df_account_balance = pd.DataFrame(np.zeros(df_data['Up Decision'].shape), index = df_data['Up Decision'].index, columns = ['Balance']) 
 
   df_account_balance['Balance'][0] = start_balance
@@ -199,6 +197,7 @@ def main():
   print 'Location: {0}'.format(max_loc)
 
   # Plot Simulations
+  df_account_balance.index = df_y.index
   df_account_balance.plot()
   plt.show()
   '''s_x = df_account_balance.index.values

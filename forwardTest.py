@@ -8,18 +8,20 @@ import cPickle as pickle
 from calculations import *
 from sklearn.externals import joblib
 
-from model import Model
+from voting import Model
+#from model import Model
 
 options = {'time_period': 5,
 				'split': 0.7,
 				'classification_method': 'on_close',
-				'scale': True,
+				'scale': False,
 				'hour_start': 9,
 				'hour_end': 18}
 
-test = Model('EURUSD1_2016b.csv', options)
+test = Model('GBPUSD1_201617.csv', options)
 test.model = joblib.load('model.pkl')
 test.scaler = joblib.load('scaler.pkl')
+test.x.to_csv('y.csv')
 
 # Forward test function
 price_info_cols = list(test.raw_data.columns.values)
@@ -36,9 +38,9 @@ print test.score
 
 test.predictions = y_predict
 test.px = px
-test.save_context()
+#test.save_context()
 
 # Result formatting for backtest
-df_result = pd.DataFrame(zip(y,px[:,1]))
+df_result = pd.DataFrame(zip(y,px[:,1]), index = test.x.index)
 df_result.to_csv('forward_test.csv')
 

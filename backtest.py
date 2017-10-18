@@ -65,15 +65,25 @@ def main():
   df_px = df_data
   df_data = appendData(df_data)
 
-  #df_y = pd.read_csv('y.csv')
-  #df_y = df_y.set_index('DATETIME')
-  #df_y.index = pd.to_datetime(df_y.index, format = "%Y-%m-%d %H:%M:%S")
+  df_y = pd.read_csv('y.csv')
+  df_y = df_y.set_index('DATETIME')
+  df_y.index = pd.to_datetime(df_y.index, format = "%Y-%m-%d %H:%M:%S")
 
-  #df_px.index = df_y.index
-  #df_px.to_csv('PX.csv', index_label = 'DATETIME')
+  df_px.index = df_y.index
+  df_px.to_csv('PX.csv', index_label = 'DATETIME')
 
-  threshold_up = 0.6
+  threshold_up = 0.58
   threshold_down = 0.42
+
+  # Filter - wait time
+  '''df_data['DATETIME'] = df_data.index
+  df_data['DATETIME'] = pd.to_datetime(df_data['DATETIME'])
+  df_data['t_last'] = (df_data['DATETIME']-df_data['DATETIME'].shift(1))/np.timedelta64(1, 'm')
+  del df_data['DATETIME']
+  
+  df_data = df_data.loc[df_data['t_last'] >= 1]'''
+
+  #####################################################
 
   for i in range(1, len(df_data['Probability'])):
 
@@ -89,7 +99,9 @@ def main():
     if (df_data['Down Decision'][i] == 1) & (df_data['Next Up'][i] == 0):
       df_data['Down Correct'][i] = 1
 
+  df_data.to_csv('backtest_signals.csv')
   print df_data.head(5)
+
 
   max_prob = df_data['Probability'].max()
   min_prob = df_data['Probability'].min()
@@ -117,7 +129,7 @@ def main():
 
   start_balance = 0#2000
   trade_amount = 1
-  win_proportion = 0.8
+  win_proportion = 0.77
   df_account_balance = pd.DataFrame(np.zeros(df_data['Up Decision'].shape), index = df_data['Up Decision'].index, columns = ['Balance']) 
 
   df_account_balance['Balance'][0] = start_balance

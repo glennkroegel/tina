@@ -52,76 +52,77 @@ class Model(object):
 		# raw feature calculation - done first before filters
 		x = copy.deepcopy(self.raw_data)
 		
-		x['WILLR'] = taCalcIndicator(x, 'WILLR', window = 20)
+		'''x['WILLR'] = taCalcIndicator(x, 'WILLR', window = 60)
 		x['WILLR_D1'] = x['WILLR'].diff()
 		#x['WILLR_D2'] = x['WILLR'].diff(2)
-		x['WILLR_D5'] = x['WILLR'].diff(5)
+		#x['WILLR_D5'] = x['WILLR'].diff(5)
 
-		'''x['ADOSC'] = taCalcIndicator(x, 'ADOSC', window = 30)
-		x['ADOSC_D1'] = x['ADOSC'].diff()
+		#x['xWILLR20'] = calc_crossover(x['WILLR'],-20)
+		#x['xWILLR80'] = calc_crossover(x['WILLR'],-80)
+		#del x['WILLR']
 
-		x['ULTOSC'] = taCalcIndicator(x, 'ULTOSC', window = 30)
-		x['ULTOSC_D1'] = x['ULTOSC'].diff()'''
-
-		x['RSI'] = taCalcIndicator(x, 'RSI', window = 20)
+		x['RSI'] = taCalcIndicator(x, 'RSI', window = 60)
 		x['RSI_D1'] = x['RSI'].diff()
 		#x['RSI_D2'] = x['RSI'].diff(2)
-		x['RSI_D5'] = x['RSI'].diff(5)
+		#x['RSI_D5'] = x['RSI'].diff(5)
 
-		'''x['CCI'] = taCalcIndicator(x, 'CCI', window = 30)
-		x['CCI_D1'] = x['CCI'].diff()
+		x['xRSI30'] = calc_crossover(x['RSI'],30)
+		x['xRSI70'] = calc_crossover(x['RSI'],70)
+		#del x['RSI']'''
 
-		x['BOP'] = taCalcIndicator(x, 'BOP')
-		x['dBOP'] = x['BOP'].diff()
+		'''x['upper'], x['lower'] = taCalcBBANDS(x)
+		x['X_upper'] = calc_crossover(x['CLOSE']-x['upper'],0)
+		x['X_lower'] = calc_crossover(x['CLOSE']-x['lower'],0)
+		del x['upper']
+		del x['lower']
 
-		x['ATR'] = taCalcIndicator(x, 'ATR', window = 14)
-		x['dATR'] = x['ATR'].diff()'''
+		#x['CCI'] = taCalcIndicator(x, 'CCI', window = 60)
+		#x['CCI_D1'] = x['CCI'].diff()
 
-		x['ADX'] = taCalcIndicator(x, 'ADX', window = 10)
+		# MACD
+		x['macd'], x['signal'], x['histogram'] = taCalcMACD(x)
+		#x['xhistogram'] = calc_crossover(x['histogram'],0)
+		del x['macd']'''
+		#del x['signal']
+
+		#x['STOCH_K'], x['STOCH_D'] = taCalcSTOCH(x)
+		#x['STOCH_X'] = calc_crossover(x['STOCH_K']-x['STOCH_D'], 0)
+		#x['xSTOCH80'] = calc_crossover(x['STOCH_D'], 80)
+		#x['xSTOCH20'] = calc_crossover(x['STOCH_D'], 20)
+		#del x['STOCH_K']
+		#del x['STOCH_D']
+
+		#x['BOP'] = taCalcIndicator(x, 'BOP')
+		#x['dBOP'] = x['BOP'].diff()
+
+		#x['ADX'] = taCalcIndicator(x, 'ADX', window = 14)
 		#x['dADX'] = x['ADX'].diff()
 
-		#x['ROC'] = taCalcIndicator(x, 'ROC')
-		x['sigma'] = x['CLOSE'].rolling(window = 60, center = False).std()
-		#x['dsigma'] = x['sigma'].diff()
+		#x['xADX25'] = calc_crossover(x['ADX'], 25)
+		#x['xADX20'] = calc_crossover(x['ADX'], 20)
+		#del x['ADX']
+
+		#x['sigma'] = x['CLOSE'].rolling(window = 30, center = False).std()
 	
 		x['BP5'] = breakawayEvent(x, window =5)
 		x['BP10'] = breakawayEvent(x, window =10)
-		x['BP15'] = breakawayEvent(x, window =15)
+		#x['BP15'] = breakawayEvent(x, window =15)
 		x['BP30'] = breakawayEvent(x, window =30)
 		'''x['BP31'] = breakawayEvent(x, window =31)
 		x['BP32'] = breakawayEvent(x, window =32)
 		x['BP33'] = breakawayEvent(x, window =33)
 		x['BP34'] = breakawayEvent(x, window =34)
 		x['BP35'] = breakawayEvent(x, window =35)
-		x['BP36'] = breakawayEvent(x, window =36)'''
-		#x['BP40'] = breakawayEvent(x, window =40)
+		x['BP36'] = breakawayEvent(x, window =36)
+		x['BP40'] = breakawayEvent(x, window =40)'''
 		x['BP60'] = breakawayEvent(x, window =60)
 		#x['BP120'] = breakawayEvent(x, window =120)
-		
-		# jarque-bera
-		#x = pd.concat([x, jarque_bera(x)], axis=1)
 
-		# breakout-points
-		#x = pd.concat([x, breakout_points(x, 30, 2)], axis=1)
+		x['H10'] = x['BP10'].rolling(window=10, center=False).sum()
+		x['H20'] = x['BP10'].rolling(window=20, center=False).sum()
+		x['H30'] = x['BP10'].rolling(window=30, center=False).sum()
 
-		# ribbon - sma
-		#x = pd.concat([x, width_metric(ribbon_sma(x))], axis=1)
-		#x = pd.concat([x, distance_metric(ribbon_sma(x))], axis=1)
-
-		# ribbon - willr
-		#x = pd.concat([x, distance_metric(ribbon_willr(x), prefix='willr_hamming')], axis=1)
-
-		# Hour dummies
-		'''try:
-			x.index = pd.to_datetime(x.index, format='%d/%m/%Y %H:%M')
-  		except:
-  			x.index = pd.to_datetime(x.index, format='%Y-%m-%d %H:%M:%S')
-		
-		#x = pd.concat([x, hour_dummies(x)], axis=1)
-		x['hour'] = x.index.hour/100'''
-
-
-		print x.tail(10)
+		x['dH20'] = x['H20'].diff()
 
 		return x
 
@@ -236,19 +237,21 @@ class Model(object):
 		act = PReLU(init='zero', weights=None)
 
 		clf = Sequential()
-		clf.add(LSTM(24, return_sequences=True, input_dim=feature_count))
+		clf.add(LSTM(12, input_dim=feature_count, return_sequences=True))
 		clf.add(Activation('relu'))
-		clf.add(Dropout(0.2))
-		#clf.add(LSTM(16, return_sequences=True))
+		#clf.add(Dropout(0.2))
+		clf.add(LSTM(6, return_sequences=True))
+		clf.add(Activation('relu'))
+		clf.add(LSTM(4, return_sequences=True))
+		clf.add(Activation('relu'))
+		#clf.add(Dropout(0.2))
+		#clf.add(LSTM(2))
 		#clf.add(Activation('relu'))
-		clf.add(LSTM(12))
-		clf.add(Activation('relu'))
-		clf.add(Dropout(0.2))
 		clf.add(Dense(1))
 		clf.add(Activation('sigmoid'))
 
 		clf.compile(optimizer='rmsprop', loss='binary_crossentropy', metrics=['accuracy'])
-		clf.fit(ls_x, ls_y, batch_size=1000, validation_data=(x_test, self.Y_test), nb_epoch=20)
+		clf.fit(ls_x, ls_y, batch_size=1000, validation_data=(x_test, self.Y_test), nb_epoch=5)
 
 		return clf
 
@@ -325,14 +328,14 @@ class Model(object):
 		print child.score
 		# Result formatting for backtest
 		try:
-			df_result = pd.DataFrame(zip(y,px[:,1]))
+			df_result = pd.DataFrame(zip(y,px[:,1]), index=child.x.index)
 		except:
 			print y.shape
 			print px.shape
 			px = [float(x) for x in px]
 			print min(px)
 			print max(px)
-			df_result = pd.DataFrame(zip(y,px))
+			df_result = pd.DataFrame(zip(y,px), index=child.x.index)
 		df_result.to_csv('forward_test.csv')
 
 def main():
@@ -341,16 +344,16 @@ def main():
 				'split': 0.9,
 				'classification_method': 'on_close',
 				'scale': True,
-				'hour_start': 9,
-				'hour_end': 18}
+				'hour_start': 0,
+				'hour_end': 23}
 
-	my_model = Model('EURUSD1_201415.csv', options)
+	my_model = Model('GBPJPY1_201415.csv', options)
 	#print my_model.x.tail(10)
 	my_model.x.to_csv('feature_vector.csv')
 	my_model.train_model()
 	print my_model.score
 	#my_model.export()
-	my_model.forwardTest('EURUSD1_2016a.csv')
+	my_model.forwardTest('GBPJPY1_201617.csv')
 
 if __name__ == "__main__":
 

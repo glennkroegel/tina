@@ -9,6 +9,7 @@ from calculations import *
 
 from sklearn import linear_model, model_selection
 from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier, RadiusNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, GradientBoostingClassifier, BaggingClassifier, AdaBoostClassifier, VotingClassifier
 from sklearn.naive_bayes import GaussianNB
@@ -18,6 +19,8 @@ from sklearn.calibration import CalibratedClassifierCV, calibration_curve
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler, LabelEncoder
 import xgboost as xgb
+from statsmodels.tsa.stattools import adfuller
+from scipy.signal import detrend
 
 from keras.models import Sequential
 from keras.optimizers import SGD
@@ -48,28 +51,51 @@ class Model(object):
 		# load pricing data
 		self.raw_data = pd.read_csv(data)
 		self.raw_data = self.raw_data.set_index("DATETIME")
+		#self.raw_data = self.raw_data.iloc[0:20000]
+		self.raw_data = self.raw_data
 		return self.raw_data
 
 	def features(self):
 		# raw feature calculation - done first before filters
 		x = copy.deepcopy(self.raw_data)
+
+		# de-trend
+		'''x['OPEN'] = x['OPEN'].rolling(center=False, window=30).apply(lambda x: detrend(x)[-1])
+		x['HIGH'] = x['HIGH'].rolling(center=False, window=30).apply(lambda x: detrend(x)[-1])
+		x['LOW'] = x['LOW'].rolling(center=False, window=30).apply(lambda x: detrend(x)[-1])
+		x['CLOSE'] = x['CLOSE'].rolling(center=False, window=30).apply(lambda x: detrend(x)[-1])'''
+
+
+		######################################################################################
+
+		#x['f'] = x['CLOSE'].rolling(center=False, window=30).apply(lambda x: detrend(x)[-1])
+		#x['df'] = x['f'].diff()
+
+		# Dickey Fuller
+		#x['p'] = x['CLOSE'].rolling(center=False, window=120).apply(lambda x: adfuller(x)[1])
+		#x['dp'] = x['p'].diff()
+		#x['d5'] = x['CLOSE'].pct_change(5)
 		
-		x['WILLR'] = taCalcIndicator(x, 'WILLR', window = 60)
+		x['WILLR'] = taCalcIndicator(x, 'WILLR', window = 30)
 		x['WILLR_D1'] = x['WILLR'].diff()
+		#x['WILLR_D1'] = (x['WILLR'].diff()-x['WILLR'].diff().rolling(window=30, center=False).mean())/x['WILLR'].diff().rolling(window=30, center=False).std()
 		#x['WILLR_D2'] = x['WILLR'].diff(2)
 		#x['WILLR_D5'] = x['WILLR'].diff(5)
 
-		x['xWILLR20'] = calc_crossover(x['WILLR'],-20)
-		x['xWILLR80'] = calc_crossover(x['WILLR'],-80)
+		#x['xWILLR20'] = calc_crossover(x['WILLR'],-20)
+		#x['xWILLR80'] = calc_crossover(x['WILLR'],-80)
 		#del x['WILLR']
 
-		x['RSI'] = taCalcIndicator(x, 'RSI', window = 60)
+		x['RSI'] = taCalcIndicator(x, 'RSI', window = 30)
 		x['RSI_D1'] = x['RSI'].diff()
+		#x['RSI_D1'] = (x['RSI'].diff()-x['RSI'].diff().rolling(window=30, center=False).mean())/x['RSI'].diff().rolling(window=30, center=False).std()
 		#x['RSI_D2'] = x['RSI'].diff(2)
 		#x['RSI_D5'] = x['RSI'].diff(5)
 
-		x['xRSI30'] = calc_crossover(x['RSI'],30)
-		x['xRSI70'] = calc_crossover(x['RSI'],70)
+		#x['STD'] = x['CLOSE'].rolling(center=False, window=30).std()
+
+		#x['xRSI30'] = calc_crossover(x['RSI'],30)
+		#x['xRSI70'] = calc_crossover(x['RSI'],70)
 		#del x['RSI']
 
 		'''x['upper'], x['lower'] = taCalcBBANDS(x)
@@ -78,16 +104,21 @@ class Model(object):
 		del x['upper']
 		del x['lower']'''
 
-		x['CCI'] = taCalcIndicator(x, 'CCI', window = 60)
+		x['CCI'] = taCalcIndicator(x, 'CCI', window = 30)
 		x['CCI_D1'] = x['CCI'].diff()
+		#x['CCI_D1'] = (x['CCI'].diff()-x['CCI'].diff().rolling(window=30, center=False).mean())/x['CCI'].diff().rolling(window=30, center=False).std()
+
+		# log difference
+		#x['log_diff'] = np.log(x['CLOSE'])
+		#x['log_diff'] = x['log_diff'].diff()
 
 		# MACD
-		x['macd'], x['signal'], x['histogram'] = taCalcMACD(x)
+		#x['macd'], x['signal'], x['histogram'] = taCalcMACD(x)
 		#x['xhistogram'] = calc_crossover(x['histogram'],0)
 		#del x['macd']
 		#del x['signal']
 
-		#x['STOCH_K'], x['STOCH_D'] = taCalcSTOCH(x)
+		x['STOCH_K'], x['STOCH_D'] = taCalcSTOCH(x)
 		#x['STOCH_X'] = calc_crossover(x['STOCH_K']-x['STOCH_D'], 0)
 		#x['xSTOCH80'] = calc_crossover(x['STOCH_D'], 80)
 		#x['xSTOCH20'] = calc_crossover(x['STOCH_D'], 20)
@@ -104,7 +135,7 @@ class Model(object):
 		#x['xADX20'] = calc_crossover(x['ADX'], 20)
 		#del x['ADX']
 
-		#x['sigma'] = x['CLOSE'].rolling(window = 30, center = False).std()
+		x['sigma'] = x['CLOSE'].rolling(window = 30, center = False).std()
 
 		x['ATR'] = np.log(taCalcIndicator(x, 'ATR', window = 30))
 	
@@ -151,20 +182,26 @@ class Model(object):
 		#x = pd.concat([x, breakout_points(x, 30, 2)], axis=1)
 
 		# ribbon - sma
-		#x = pd.concat([x, width_metric(ribbon_sma(x))], axis=1)
-		#x = pd.concat([x, distance_metric(ribbon_sma(x))], axis=1)
+		x = pd.concat([x, width_metric(ribbon_sma(x))], axis=1)
+		x = pd.concat([x, distance_metric(ribbon_sma(x))], axis=1)
 
 		# ribbon - willr
-		#x = pd.concat([x, distance_metric(ribbon_willr(x), prefix='willr_hamming')], axis=1)
+		#x = pd.concat([x, width_metric(ribbon_willr(x), prefix='willr_hamming')], axis=1)
 
 		# Hour dummies
 		'''try:
 			x.index = pd.to_datetime(x.index, format='%d/%m/%Y %H:%M')
-  		except:
+0  		except:
   			x.index = pd.to_datetime(x.index, format='%Y-%m-%d %H:%M:%S')
 		
 		x = pd.concat([x, hour_dummies(x)], axis=1)'''
 
+		# Kalman
+		#x['kalman'] = WLS(x['CLOSE'])
+
+
+		# Formulaic Alphas
+		#x['A101'] = A101(x)
 		
 
 		return x
@@ -193,11 +230,16 @@ class Model(object):
 		temp = temp.dropna()
 		temp = temp.loc[temp['y'] != 2]
 		# Filter
+		#temp = temp.loc[x['BP30'] == 0]
 		temp = temp.loc[x['BP10'] != 0]
+		#temp = temp.loc[np.absolute(x['f'])>0.00025]
+		#temp = temp.loc[np.absolute(x['RSI']-50)>20]
 		#temp = temp.loc[x['BP30'] != 0]
+		#temp = temp.loc[x['ribbon_width']<=10]
+		#temp = temp.loc[x['p']<=0.5]
 		#temp = temp.loc[np.absolute(x['H20'] <= 2)]
-		temp = temp.loc[x['ADX']<=2]
-		#temp = temp.loc[x['ATR']<=-9.5]
+		temp = temp.loc[x['ADX']>3]
+		#temp = temp.loc[x['ATR']<=-3.0]
 		#temp = temp.loc[np.absolute(x['RSI_D1'])<=8]
 		#temp = temp.loc[np.absolute(x['CCI'])>=100]
 		#temp = temp.loc[np.absolute(x['WILLR_D1'])<=25]
@@ -209,6 +251,8 @@ class Model(object):
 			temp.index = pd.to_datetime(temp.index, format = "%Y-%m-%d %H:%M:%S")
 
 		temp = temp.between_time(dt.time(self.options['hour_start'],00), dt.time(self.options['hour_end'],00))
+
+		print "Training size: {0}".format(len(temp))
 
 		x_prepared = temp.drop('y',1)
 		y_prepared = temp[['y']]
@@ -237,9 +281,9 @@ class Model(object):
 
 		# Scale - move elsewhere
 		if self.options['scale'] == True:
-			self.scaler = MinMaxScaler(feature_range = [-1,1])#RobustScaler(with_centering=False, with_scaling=True, quantile_range=(25.0, 75.0), copy=True)#StandardScaler()#MinMaxScaler(feature_range = [0,1]) #RobustScaler(with_centering=False, with_scaling=True, quantile_range=(10.0, 90.0), copy=True) #MinMaxScaler(feature_range = [-1,1])
+			self.scaler = MinMaxScaler(feature_range = [0,1])#RobustScaler(with_centering=False, with_scaling=True, quantile_range=(25.0, 75.0), copy=True)#StandardScaler()#MinMaxScaler(feature_range = [0,1]) #RobustScaler(with_centering=False, with_scaling=True, quantile_range=(10.0, 90.0), copy=True) #MinMaxScaler(feature_range = [-1,1])
 			x = self.scaler.fit_transform(x)
-			print x[1001]
+			#print x[1001]
 
 		x_train, x_test, y_train, y_test = model_selection.train_test_split(x, y, train_size = self.options['split'], random_state = 42)
 
@@ -252,27 +296,54 @@ class Model(object):
 		ls_y = self.Y_train
 		# model type
 		lr = LogisticRegression(C=1, class_weight='balanced', solver='lbfgs')
-		lr2 = LogisticRegression(C=0.1, class_weight='balanced', solver='lbfgs')
-		lr3 = LogisticRegression(C=10, class_weight='balanced', solver='lbfgs')
+		lr2 = LogisticRegression(C=10, class_weight='balanced', solver='lbfgs')
+		lr3 = LogisticRegression(C=1000, class_weight='balanced', solver='lbfgs')
+		svm = SVC(C=10.0, probability = True)
 		mlp = MLPClassifier(activation='relu', hidden_layer_sizes=(100,))
-		rf = RandomForestClassifier(n_estimators = 200, max_features = None , criterion = 'gini', min_samples_leaf = 100, n_jobs = -1,
+		kn = KNeighborsClassifier(n_neighbors = 250, weights = 'distance', algorithm = 'auto', n_jobs = -1)
+		rf = RandomForestClassifier(n_estimators = 1000, max_features = None , criterion = 'gini', min_samples_leaf = 250, n_jobs = -1,
 									random_state = 62, class_weight = 'balanced', bootstrap = True, oob_score = True, min_weight_fraction_leaf = 0.00)
-		gb = GradientBoostingClassifier(n_estimators = 200, min_samples_leaf = 100)
-		dense = dense_classifier(ls_x, ls_y)
+		# boosting methods
+		gb = GradientBoostingClassifier(n_estimators = 1000, min_samples_leaf = 250)
+		bc1 = BaggingClassifier(base_estimator = DecisionTreeClassifier(min_samples_leaf=250)
+								, n_estimators = 100, max_features = 0.5, max_samples = 0.1)
+		bc2 = BaggingClassifier(base_estimator = KNeighborsClassifier(n_neighbors = 250, weights = 'distance', algorithm = 'auto', n_jobs = -1)
+								, n_estimators = 25, max_features = 0.5, max_samples = 0.1)
+		
+		ab1 = AdaBoostClassifier(base_estimator = DecisionTreeClassifier(min_samples_leaf=250)
+								, n_estimators = 1000, learning_rate = 0.5)
+		ab2 = AdaBoostClassifier(base_estimator = KNeighborsClassifier(n_neighbors = 250, weights = 'distance', algorithm = 'auto', n_jobs = -1)
+								, n_estimators = 10, learning_rate = 0.5)
+
+		
 		
 		# classifiers
-		clf1 = CalibratedClassifierCV(lr, method='sigmoid', cv=3)
+		clf1 = lr #CalibratedClassifierCV(lr, method='sigmoid', cv=3)
 		clf2 = CalibratedClassifierCV(mlp, method='sigmoid', cv=3)
 		clf3 = CalibratedClassifierCV(rf, method='sigmoid', cv=3)
 		clf4 = CalibratedClassifierCV(gb, method='sigmoid', cv=3)
-		clf5 = CalibratedClassifierCV(lr2, method='sigmoid', cv=3)
-		clf6 = CalibratedClassifierCV(lr3, method='sigmoid', cv=3)
+		clf5 = lr2 #CalibratedClassifierCV(lr2, method='sigmoid', cv=3)
+		clf6 = lr3 #CalibratedClassifierCV(lr3, method='sigmoid', cv=3)
+		clf7 = kn
+		clf12 = svm
+		# boosting classifiers
+		clf8 = CalibratedClassifierCV(bc1, method='sigmoid', cv=3)
+		clf9 = bc2 #CalibratedClassifierCV(bc2, method='sigmoid', cv=3)
+		clf10 = CalibratedClassifierCV(ab1, method='sigmoid', cv=3)
+		clf11 = ab2 #CalibratedClassifierCV(ab2, method='sigmoid', cv=3)
 
-		estimators = [('model_1',clf1), ('model_2',clf2), ('model_3',clf3), ('model_4',clf4), ('model_5',clf5), ('model_6',clf6)]
+		estimators = [('model_1',clf1), ('model_2',clf2), ('model_3',clf3), ('model_4',clf4), ('model_5',clf5), ('model_6',clf6),('model_1',clf8),('model_1',clf10)]
+		#estimators = [('model_1',clf1), ('model_2',clf2), ('model_3',clf3), ('model_4',clf4)]
+		#estimators = [('model_1',clf4), ('model_2',clf3)]
+		#estimators = [('model_1',clf8),('model_2',clf10)]
+		#estimators = [('model_1',clf8),('model_2',clf10)]
+		#estimators = [('model_1',clf10)]
+		#estimators = [('model_1',clf7),('model_1',clf8)]
+		#estimators = [('model_1',clf1), ('model_2',clf5), ('model_3',clf6)]
 
 		# voting
 		clf = VotingClassifier(estimators=estimators, voting='soft')
-		clf = CalibratedClassifierCV(clf, method='sigmoid', cv=3)
+		#clf = CalibratedClassifierCV(clf, method='sigmoid', cv=3)
 
 		assert not np.any(np.isnan(ls_x) | np.isinf(ls_x))
 		clf.fit(ls_x, ls_y)
@@ -355,7 +426,7 @@ def dense_classifier(X,y):
 		model.add(Dense(10, activation = 'relu')) # , input_dim=n_cols
 		model.add(Dropout(0.2))
 		model.add(Dense(4, activation = 'relu', W_constraint=maxnorm(3))) # , W_constraint=maxnorm(3)
-		model.add(Dropout(0.2))
+		model.add(Dropout(0.2))	
 		model.add(Dense(1, activation = 'sigmoid'))
 		# compile model
 		#sgd = SGD(lr=0.01, momentum=0.8, decay=0.0, nesterov=False)
@@ -372,13 +443,13 @@ def dense_classifier(X,y):
 def main():
 
 	options = {'time_period': 5,
-				'split': 0.9,
+				'split': 0.7,
 				'classification_method': 'on_close',
-				'scale': True,
+				'scale': False,
 				'hour_start': 9,
 				'hour_end': 18}
 
-	my_model = Model('GBPJPY1_201415.csv', options)
+	my_model = Model('GBPUSD1_201415.csv', options)
 	#print my_model.x.tail(10)
 	my_model.x.to_csv('feature_vector.csv')
 	my_model.train_model()

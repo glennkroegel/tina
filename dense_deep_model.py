@@ -7,7 +7,7 @@ import copy
 import cPickle as pickle
 from calculations import *
 
-from sklearn import linear_model, cross_validation
+from sklearn import linear_model, model_selection
 from sklearn.neighbors import KNeighborsClassifier, RadiusNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, GradientBoostingClassifier, BaggingClassifier, AdaBoostClassifier
 from sklearn.naive_bayes import GaussianNB
@@ -61,11 +61,11 @@ class Model(object):
 		x['xWILLR20'] = calc_crossover(x['WILLR'],-20)
 		x['xWILLR80'] = calc_crossover(x['WILLR'],-80)
 
-		'''x['ADOSC'] = taCalcIndicator(x, 'ADOSC', window = 30)
-		x['ADOSC_D1'] = x['ADOSC'].diff()
+		#x['ADOSC'] = taCalcIndicator(x, 'ADOSC', window = 30)
+		#x['ADOSC_D1'] = x['ADOSC'].diff()
 
-		x['ULTOSC'] = taCalcIndicator(x, 'ULTOSC', window = 30)
-		x['ULTOSC_D1'] = x['ULTOSC'].diff()'''
+		#x['ULTOSC'] = taCalcIndicator(x, 'ULTOSC', window = 30)
+		#x['ULTOSC_D1'] = x['ULTOSC'].diff()
 
 		x['RSI'] = taCalcIndicator(x, 'RSI', window = 30)
 		x['RSI_D1'] = x['RSI'].diff()
@@ -78,13 +78,20 @@ class Model(object):
 		x['CCI'] = taCalcIndicator(x, 'CCI', window = 30)
 		x['CCI_D1'] = x['CCI'].diff()
 
-		'''x['BOP'] = taCalcIndicator(x, 'BOP')
-		x['dBOP'] = x['BOP'].diff()
+		# log difference
+		#x['log_diff'] = np.log(x['CLOSE'])
+		#x['log_diff'] = x['log_diff'].diff()
+
+		#x['BOP'] = taCalcIndicator(x, 'BOP')
+		#x['dBOP'] = x['BOP'].diff()
 
 		x['ATR'] = taCalcIndicator(x, 'ATR', window = 14)
-		x['dATR'] = x['ATR'].diff()'''
+		#x['dATR'] = x['ATR'].diff()
 
-		#x['ADX'] = taCalcIndicator(x, 'ADX', window = 20)
+		x['ADX'] = taCalcIndicator(x, 'ADX', window = 20)
+		#x['dADX'] = x['ADX'].diff()
+
+		x['ADXR'] = taCalcIndicator(x, 'ADXR', window = 20)
 		#x['dADX'] = x['ADX'].diff()
 
 		#x['ROC'] = taCalcIndicator(x, 'ROC')
@@ -97,19 +104,19 @@ class Model(object):
 		x['BP10'] = breakawayEvent(x, window =10)
 		x['BP15'] = breakawayEvent(x, window =15)
 		x['BP30'] = breakawayEvent(x, window =30)
-		'''x['BP31'] = breakawayEvent(x, window =31)
-		x['BP32'] = breakawayEvent(x, window =32)
-		x['BP33'] = breakawayEvent(x, window =33)
-		x['BP34'] = breakawayEvent(x, window =34)
-		x['BP35'] = breakawayEvent(x, window =35)
-		x['BP36'] = breakawayEvent(x, window =36)
-		x['BP40'] = breakawayEvent(x, window =40)'''
+		#x['BP31'] = breakawayEvent(x, window =31)
+		#x['BP32'] = breakawayEvent(x, window =32)
+		#x['BP33'] = breakawayEvent(x, window =33)
+		#x['BP34'] = breakawayEvent(x, window =34)
+		#x['BP35'] = breakawayEvent(x, window =35)
+		#x['BP36'] = breakawayEvent(x, window =36)
+		#x['BP40'] = breakawayEvent(x, window =40)
 		x['BP60'] = breakawayEvent(x, window =60)
 		#x['BP120'] = breakawayEvent(x, window =120)
 
-		x['H20'] = x['BP10'].rolling(window=20, center=False).sum()
+		#x['H20'] = x['BP10'].rolling(window=20, center=False).sum()
 
-		x['dH20'] = x['H20'].diff()
+		#x['dH20'] = x['H20'].diff()
 		
 		# jarque-bera
 		#x = pd.concat([x, jarque_bera(x)], axis=1)
@@ -125,13 +132,13 @@ class Model(object):
 		#x = pd.concat([x, distance_metric(ribbon_willr(x), prefix='willr_hamming')], axis=1)
 
 		# Hour dummies
-		'''try:
-			x.index = pd.to_datetime(x.index, format='%d/%m/%Y %H:%M')
-  		except:
-  			x.index = pd.to_datetime(x.index, format='%Y-%m-%d %H:%M:%S')
+		#try:
+		#	x.index = pd.to_datetime(x.index, format='%d/%m/%Y %H:%M')
+  		#except:
+  		#	x.index = pd.to_datetime(x.index, format='%Y-%m-%d %H:%M:%S')
 		
 		#x = pd.concat([x, hour_dummies(x)], axis=1)
-		x['hour'] = x.index.hour/100'''
+		#x['hour'] = x.index.hour/100
 
 
 		print x.tail(10)
@@ -202,7 +209,7 @@ class Model(object):
 		y = self.y.values.ravel()
 		assert(len(x) == len(y))
 
-		x_train, x_test, y_train, y_test = cross_validation.train_test_split(x, y, train_size = self.options['split'], random_state = 42)
+		x_train, x_test, y_train, y_test = model_selection.train_test_split(x, y, train_size = self.options['split'], random_state = 42)
 
 		'''p = 0.8
 		ix_train = int(p*len(x))
@@ -233,7 +240,7 @@ class Model(object):
 		feature_count = len(self.feature_list)
 		x_test = self.X_test
 
-		act = PReLU(init='zero', weights=None)
+		#act = PReLU(init='zero', weights=None)
 
 		clf = Sequential()
 		#clf.add(Dropout(0.2, input_shape=(feature_count,)))
@@ -245,7 +252,7 @@ class Model(object):
 		clf.add(Activation('sigmoid'))
 
 		clf.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy']) # rmsprop
-		clf.fit(ls_x, ls_y, batch_size=1000, validation_data=(x_test, self.Y_test), nb_epoch=20)
+		clf.fit(ls_x, ls_y, batch_size=500, validation_data=(x_test, self.Y_test), nb_epoch=20)
 
 		return clf
 
@@ -338,8 +345,8 @@ def main():
 				'split': 0.8,
 				'classification_method': 'on_close',
 				'scale': True,
-				'hour_start': 0,
-				'hour_end': 9}
+				'hour_start': 9,
+				'hour_end': 18}
 
 	my_model = Model('USDJPY1_201415.csv', options)
 	#print my_model.x.tail(10)
